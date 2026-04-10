@@ -1,6 +1,18 @@
-# INFO3180 VueJS and Flask Starter
+# INFO3180 Group Project
 
-This template should help get you started developing with Vue 3 on the frontend and Flask as an API on the backend.
+DriftDater is a Dating Web application that allows users to create detailed profiles, discover compatible matches and initiate connections with other users. This application uses the Vue 3 frontend framework as well as the Flask backend API, along with a database to store relevant user information.
+
+## Team Members & Roles
+
+Members | Roles
+--- | ---
+Rochele Webster | Backend Lead
+Jada-Marie Dotting | Frontend Lead
+Amoye Walters | QA/Testing Lead
+Ashle Johnson | Deployment Lead
+Alexia Barrows | Project Manager
+
+
 
 ## Recommended IDE Setup
 
