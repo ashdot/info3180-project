@@ -6,7 +6,11 @@ This file creates your application.
 """
 
 from app import app
-from flask import render_template, request, jsonify, send_file
+from flask import render_template, request, jsonify, send_file, flash
+from flask_login import login_user, logout_user, verify_password, login_required 
+from .forms import LoginForm, SignUpForm
+from .models import User, Profile 
+from . import db 
 import os
 
 
@@ -17,6 +21,101 @@ import os
 @app.route('/')
 def index():
     return jsonify(message="This is the beginning of our API")
+
+
+# @app.route('/api/login', methods=['GET','POST'])
+# def login():
+#     if request.method == 'POST':
+
+#         email = request.form['email']
+#         password = request.form['password']
+#         user_data = User.query.filter_by(email=email).first()
+
+#         if user_data and verify_password(password, user_data.password):
+
+#             
+#              
+            
+#             
+#             
+#             
+
+#     #Connect to Vue 
+#     pass
+
+
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    data = request.get_json() 
+    
+    if User.query.filter_by(email=data.get('email')).first():
+        return jsonify({"error": "Email already exists"}), 400
+
+    try:
+        new_user = User(
+            email=data.get('email'),
+            username=data.get('username'),
+            first_name=data.get('first_name'),
+            last_name=data.get('last_name'),
+            dob=data.get('dob'), 
+            gender=data.get('gender'),
+            looking_for=data.get('looking_for')
+        )
+        new_user.set_password(data.get('password'))
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({"message": "User created successfully!"}), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/profile/create', methods=['POST'])
+#@login_required 
+def create_profile():
+    data = request.get_json()
+    
+    
+    new_profile = Profile(
+        user_id=data.get('user_id'),
+        age=data.get('age'),
+        photo=data.get('photo_url'),
+        bio=data.get('bio'),
+        location=data.get('location')
+    )
+    
+    db.session.add(new_profile)
+
+    db.session.commit()
+    
+    return jsonify({"message": "Profile saved!"}), 201
+
+@app.route('/api/profile', methods=['GET'])
+#@login_required 
+def display_profile():
+    data = request.get_json()
+    
+    
+    profile = Profile.query.filter_by(username=current_user).first()
+    
+    return jsonify({
+        "username": profile.user.username, # Accessing via backref
+        "first_name": profile.user.first_name,
+        "age": profile.age,
+        "bio": profile.bio,
+        "photo": profile.photo,
+        "location": profile.location,
+        "gender": profile.gender,
+        "looking_for": profile.looking_for
+    }), 200
+
+@app.route('/api/logout')
+#@login_required
+def logout():
+    logout_user()
+    #return redirect()
+    pass
 
 
 ###
