@@ -25,6 +25,34 @@ class User(db.Model):
         self.email = email
         self.gender = gender
         
+    likes_given = db.relationship('Like', foreign_keys=['Like.liker_id'], backref='author', lazy='dynamic')
+    likes_received = db.relationship('Like', foreign_keys=['Like.liked_id'], backref='target', lazy='dynamic')
+
+    def like(self, profile):
+        """
+        Creates a new record in the Like table where action = like
+        and is_match = maybe
+        """
+        if not self.has_liked(profile):
+            new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='Maybe', action='like')
+            db.session.add(new_like)
+
+    def dislike(self, profile):
+        """
+        Creates a new record in the Like table where action = dislike
+        and match = False
+    
+        """
+        new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='False', action='dislike') 
+        db.session.add(new_like)
+        
+    def has_disliked(self, profile):
+        # Check if a like already exists
+        return Like.query.filter_by(liker_id=self.user_id, liked_id=profile.user_id, action='dislike').first() is not None
+    
+    def has_liked(self, profile):
+        # Check if a like already exists
+        return Like.query.filter_by(liker_id=self.user_id, liked_id=profile.user_id, action='like').first() is not None
 
     def is_authenticated(self):
         return True
@@ -37,11 +65,52 @@ class User(db.Model):
 
     def get_id(self):
         try:
-            return unicode(self.id)  # python 2 support
+            return unicode(self.user_id)  # python 2 support
         except NameError:
-            return str(self.id)  # python 3 support
+            return str(self.user_id)  # python 3 support
 
     def __repr__(self):
         return '<User %r>' % (self.username)
+
         
+class Like(db.Model):
+    __tablename__ = 'like'
+    
+    like_id = db.Column(db.Integer, primary_key=True)
+    liker_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    liked_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    is_match = db.Column(db.String(128))
+    action = db.Column(db.String(128))
+    
+    def __init__(self, liker_id, liked_id, is_match, action):
+        self.liker_id = liker_id
+        self.liked_id = liked_id
+        self.is_match = is_match
+        self.action = action
+        
+    def get_like_id(self):
+        try:
+            return unicode(self.like_id)  # python 2 support
+        except NameError:
+            return str(self.like_id)  # python 3 support
+
+class Match:
+    __tablename__ = 'matches'
+    
+    match_id = db.Column(db.Integer, primary_key=True)
+    user1_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    user2_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    matched_at = db.Column(db.DateTime, default=db.func.now())
+    
+    def __init__(self, user1_id, user2_id):
+        self.user1_id = user1_id
+        self.user2_id = user2_id
+        #find a way to ensure that no duplicates are entered.
+        
+    def get_match_id(self):
+        try:
+            return unicode(self.match_id)  # python 2 support
+        except NameError:
+            return str(self.match_id)  # python 3 support
         
