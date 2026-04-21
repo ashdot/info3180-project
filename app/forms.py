@@ -1,7 +1,7 @@
 # Add any form classes for Flask-WTF here
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, DateField
-from wtforms.validators import InputRequired, InputRequired, Email, Length
+from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField
+from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed
 
 
 class LoginForm(FlaskForm):
@@ -36,3 +36,23 @@ class SignUpForm(FlaskForm):
     ])
     
     submit = SubmitField('Sign Up') 
+
+
+
+class EditProfile(FlaskForm):
+
+    visibility = SelectField('Visibility', choices=[('Public', 'Public'), ('Private', 'Private')])
+    
+    preference = SelectField('Looking for', choices=[('Man', 'Man'), ('Woman', 'Woman'), ('Both', 'Both')])
+    
+    education = StringField('Education', validators=[Optional(), Length(max=100)])
+    
+    photo = FileField('Update Profile Photo', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
+    ])
+    
+    bio = TextAreaField('Bio', validators=[Length(max=255)])
+    
+    location = StringField('Location', validators=[Length(max=100)])
+    
+    submit = SubmitField('Save Changes')
