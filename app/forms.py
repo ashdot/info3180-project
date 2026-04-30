@@ -1,7 +1,7 @@
 # Add any form classes for Flask-WTF here
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField
-from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed
+from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed, SelectMultipleField
 
 
 class LoginForm(FlaskForm):
@@ -40,6 +40,15 @@ class SignUpForm(FlaskForm):
 
 
 class EditProfile(FlaskForm):
+    # Defining the list within the class or importing it
+    PERSONAL_INTERESTS = [
+        'Tech', 'Music', 'Art', 'Sports', 'Cooking', 'Travel',
+        'Fitness', 'Gaming', 'Reading', 'Film', 
+        'Photography', 'Fashion', 'Pets', 'Socializing'
+    ]
+    
+    # Format the list into tuples: ('Tech', 'Tech')
+    INTEREST_CHOICES = [(interest, interest) for interest in PERSONAL_INTERESTS]
 
     visibility = SelectField('Visibility', choices=[('Public', 'Public'), ('Private', 'Private')])
     
@@ -50,6 +59,8 @@ class EditProfile(FlaskForm):
     photo = FileField('Update Profile Photo', validators=[
         FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
     ])
+
+    interests = SelectMultipleField('Interests', choices=INTEREST_CHOICES)
     
     bio = TextAreaField('Bio', validators=[Length(max=255)])
     
