@@ -24,7 +24,7 @@ def index():
     return jsonify(message="This is the beginning of our API")
 
 
-@app.route('/api/login', methods=['POST']) 
+@app.route('/api/v1/auth/login', methods=['POST']) 
 def login():
     data = request.get_json()
 
@@ -49,7 +49,7 @@ def login():
     return jsonify({"error": "Invalid email or password"}), 401
 
 
-@app.route('/api/signup', methods=['POST'])
+@app.route('/api/v1/signup', methods=['POST'])
 def signup():
     data = request.get_json() 
     
@@ -93,27 +93,16 @@ def signup():
         return jsonify({"error": str(e)}), 500
     
 
-#MAY NOT BE NEEDED 
-# @app.route('/api/profile/create', methods=['POST'])
-# #@login_required 
-# def create_profile():
-#     data = request.get_json()
-    
-#     new_profile = Profile(
-#         user_id=data.get('user_id'),
-#         age=data.get('age'),
-#         photo=data.get('photo_url'),
-#         bio=data.get('bio'),
-#         location=data.get('location')
-#     )
-    
-#     db.session.add(new_profile)
+#List all user Profiles 
 
-#     db.session.commit()
-    
-#     return jsonify({"message": "Profile saved!"}), 201
 
-@app.route('/api/profile', methods=['GET'])
+#Get a singular Profile 
+
+
+
+
+
+@app.route('/api/v1/profile', methods=['GET'])
 #@login_required 
 def display_profile():
     data = request.get_json()
@@ -139,7 +128,7 @@ def display_profile():
     }), 200
 
 
-@app.route('/api/profile/edit', methods=['PUT'])
+@app.route('/api/v1/profile/edit', methods=['PUT'])
 # @login_required
 def edit_profile():
 
@@ -194,7 +183,7 @@ def age_range(age):
         return age_ranges[6]
         
 
-@app.route('/api/logout')
+@app.route('/api/v1/auth/logout')
 #@login_required
 def logout():
     logout_user()

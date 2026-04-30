@@ -2,7 +2,7 @@
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.ext.hybrid import hybrid_property
-from datetime import date
+from datetime import date, datetime
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -187,3 +187,36 @@ class Preference(db.Model):
 
     def __repr__(self):
         return f'<Preference User:{self.user_id} Age:{self.age_min}-{self.age_max}>'
+
+
+#d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)
+
+
+
+
+
+from datetime import datetime, timezone
+
+class Messages(db.Model):
+    __tablename__ = 'messages'
+
+    message_id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    
+    timestamp = db.Column(
+        db.DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
+
+    def __init__(self, sender_id, receiver_id, content):
+        self.sender_id = sender_id
+        self.receiver_id = receiver_id
+        self.content = content
+
+    def __repr__(self):
+        return f'<Message from {self.sender_id} to {self.receiver_id} at {self.timestamp}>'
