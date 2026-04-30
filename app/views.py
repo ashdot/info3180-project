@@ -134,7 +134,8 @@ def display_profile():
         "photo": profile.photo_url,
         "location": profile.location,
         "gender": profile.gender,
-        "looking_for": profile.looking_for
+        "looking_for": profile.looking_for,
+        "interests": profile.interests
     }), 200
 
 
