@@ -2,7 +2,7 @@
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.ext.hybrid import hybrid_property
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -181,7 +181,6 @@ class Preference(db.Model):
     # Age Range
 
     #Ask Rochele abt this 
-
     age_min = db.Column(db.Integer, default=18)
     age_max = db.Column(db.Integer, default=99)
 
@@ -195,7 +194,7 @@ class Preference(db.Model):
 
 
 
-from datetime import datetime, timezone
+
 
 class Messages(db.Model):
     __tablename__ = 'messages'
