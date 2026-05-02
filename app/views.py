@@ -7,9 +7,10 @@ This file creates your application.
 
 import os
 from app import app, db
-from app.models import User, Like, Match
+from app.models import User, Profile, Preference, Like, Match, Message
 from flask import render_template, request, jsonify, send_file
 from flask_login import login_user, logout_user, current_user, login_required
+from sqlalchemy import or_
 
 
 
@@ -59,40 +60,36 @@ def display_matches():
     Displays matched profiles to logged in users
     """
     user_id = current_user.id
-    # whatever the profile database is called
-    profiles = db.session.execute(db.select(UserProfile)).scalars() 
-    # maybe looking_for in user should be a different table for preferences
-    user = db.session.execute(db.select(UserPreference).filter_by(user_id=user_id)).scalar_one() 
-    best_match = []
-    okay_match = []
-    unlikely_match = []
-    for profile in profiles:
-        candidate = {'location': profile.location, 'age': profile.age, 'interests': profile.interests, 'gender': profile.gender}
-        score = calculate_match_score(user, candidate)
-        if score >= 4:
-            best_match.append([profile, score])
-        elif 2 <= score <= 4:
-            okay_match.append([profile, score])
-        else:
-            unlikely_match.append([profile, score])
-    match_list = []
-    for match in best_match:
-        match_list.append({
-            "id": match[0].user_id,
-            "location": match[0].location,
-            "age": match[0].age,
-            "interests": match[0].interests,
-            "gender": match[0].gender,
-            "score": match[1]
-        })
-    # We can either make another for loop for okay matches
-    # or we can combine the good and okay matches 
-    # and not track the unlikely matches
-
-    return jsonify({"matches": match_list}), 200
-    #frontend team will display matches within this list
     
-@app.route('/api/v1/profiles/<:id>/like', methods = ['POST'])
+    #remove all profiles the user has already viewed
+    interacted = db.session.query(Like.liked_id).filter(Like.liker_id == user_id).all()
+    interacted_ids = [i[0] for i in interacted] + [user_id]
+    
+    profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
+    
+    user_info = db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
+    user_pref = db.session.execute(db.select(Preference).filter_by(user_id=user_id)).scalar_one() 
+    
+    scored_match_list = []
+    for profile in profiles:
+        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.gender}
+        user = {'location': user_info.location, 'age': user_pref.age_range, 'interests': user_info.interests, 'gender': user_pref.gender_pref}
+         
+        score = calculate_match_score(user, candidate)
+        scored_match_list.append({
+            "id": profile.user_id,
+            "location": profile.location,
+            "age": profile.age,
+            "interests": profile.interests,
+            "gender": profile.gender,
+            "score": score
+        })
+    #top_50_matches = scored_match_list[:50]
+    #return jsonify({"matches": top_50_matches, "total_available": len(scored_match_list)}), 200
+    
+    return jsonify({"matches": scored_match_list}), 200
+
+@app.route('/api/v1/profiles/<id>/like', methods = ['POST'])
 @login_required
 def like_profile(id):
     """
@@ -106,59 +103,161 @@ def like_profile(id):
     if current_user.id == profile_to_like.id:
         return jsonify({"error": "You cannot like your own profile"}), 400
 
-    # Check if user already liked this profile
+    # remove like from database if user presses like again
     if current_user.has_liked(profile_to_like):
-        return jsonify({"message": "You already liked this profile"}), 200
-    
+        current_user.remove_like(profile_to_like)
+
+        #remove any match records if like is removed
+        match_record = Match.query.filter(((Match.user1_id == current_user.user_id) & (Match.user2_id == profile_to_like.user_id))).first()
+        match_record_rev = Match.query.filter(((Match.user1_id == profile_to_like.user_id) & (Match.user2_id == current_user.user_id))).first()
+        if match_record:
+            db.session.delete(match_record)
+        if match_record_rev:
+            db.session.delete(match_record_rev)
+        
+        db.session.commit()
+        return jsonify({"message": "Like removed"}), 200
+   
+    # if the above cases are false, like the profile and add like record to database
     current_user.like(profile_to_like)
     db.session.commit()
     total_likes = profile_to_like.likes_received.count()
     
     is_mutual = profile_to_like.has_liked(current_user)
     
+    #to be fixed
     if is_mutual:
-        # We don't create the Match record yet! 
-        # We tell the frontend to ask the user for confirmation.
-        return jsonify({
-            "message": "Potential Match!",
-            "is_mutual": True,
-            "profile_id": id,
-            "username": profile_to_like.username
-        }), 200
+        existing_match = Match.query.filter(
+        or_(
+            (Match.user1_id == current_user.user_id) & (Match.user2_id == profile_to_like.user_id),
+            (Match.user1_id == profile_to_like.user_id) & (Match.user2_id == current_user.user_id)
+        )
+    ).first()
+        
+        if not existing_match:
+            new_match = Match(user1_id=current_user.user_id, user2_id=profile_to_like.user_id)
+            existing_like = Like.query.filter_by(liker_id=current_user.user_id, liked_id=profile_to_like.user_id, action='like').first()
+            if existing_like:
+                existing_like.is_match = 'Yes'
+                db.session.commit()
+            
+            existing_like_rev = Like.query.filter_by(liker_id=profile_to_like.user_id, liked_id=current_user.user_id, action='like').first()
+            if existing_like_rev:
+                existing_like.is_match = 'Yes'
+                db.session.commit()
+            
+            db.session.add(new_match)
+            db.session.commit()
+            return jsonify({"message": f"You have matched with {profile_to_like.username}",
+                            "match_id": new_match.match_id }), 201
+
     
     return jsonify({"message": f"You liked {profile_to_like.username}",
                     "likes_count": profile_to_like.likes_received.count()}), 201
 
 
-
-@app.route('/api/v1/profiles/<int:id>/confirm-match', methods=['POST'])
+@app.route('/api/v1/profiles/<id>/dislike', methods = ['POST'])
 @login_required
-def confirm_match(id):
+def dislike_profile(id):
     """
-    If the user confirms the match, it is saved to the match database.
+    When users dislike a profile, the dislike is saved to the Likes database.
     """
-    profile = User.query.get_or_404(id)
-
-    # Verify both users actually like each other before creating the record
-    if current_user.has_liked(profile) and profile.has_liked(current_user):
-        
-        # Check if match already exists to prevent duplicates
-        existing_match = Match.query.filter(
-            ((Match.user1_id == current_user.user_id) & (Match.user2_id == profile.user_id)) |
-            ((Match.user1_id == profile.user_id) & (Match.user2_id == current_user.user_id))
-        ).first()
-
-        if not existing_match:
-            new_match = Match(user1_id=current_user.user_id, user2_id=profile.user_id)
-            db.session.add(new_match)
-            db.session.commit()
-            return jsonify({"message": "Match confirmed and saved!"}), 201
-        
-        return jsonify({"message": "Match already exists"}), 200
-
-    return jsonify({"error": "Mutual like not found"}), 400
-
+    profile_to_dislike = User.query.get_or_404(id)
     
+    # Check if the user is trying to like themselves
+    if current_user.id == profile_to_dislike.id:
+        return jsonify({"error": "You cannot dislike your own profile"}), 400
+
+    # Check if user already liked this profile
+    if current_user.has_disliked(profile_to_dislike):
+        current_user.remove_dislike(profile_to_dislike)
+        db.session.commit()
+        return jsonify({"message": "Dislike removed"}), 200
+    
+    current_user.dislike(profile_to_dislike)
+    db.session.commit()
+    
+    return jsonify({"message": f"You disliked {profile_to_dislike.username}"}), 201
+
+
+@app.route('/api/v1/profiles/<id>/pass', methods=['POST'])
+@login_required
+def pass_profile(id):
+    """
+    Check this later
+    """
+    profile_to_pass = User.query.get_or_404(id)
+    
+    # Check if interaction already exists
+    existing = Like.query.filter_by(liker_id=current_user.user_id, liked_id=profile_to_pass.user_id).first()
+    
+    if not existing:
+        # Save as a 'pass' action so it's filtered out of the algorithm next time
+        new_pass = Like(liker_id=current_user.user_id, liked_id=profile_to_pass.user_id, action='pass')
+        db.session.add(new_pass)
+        db.session.commit()
+        return jsonify({"message": "Profile passed. You won't see them again."}), 201
+    
+    return jsonify({"message": "Already interacted with this profile"}), 200
+   
+
+@app.route('/api/v1/contacts/<user_id>', methods=['GET'])
+@login_required
+def contacts(user_id):
+    """
+    Displays a contact list of mutual matches.
+    """
+    contact_ids = Like.query(Like.liked_id).filter_by(user1_id = user_id, is_match="Yes").all()
+    contact_list = []
+    for contact_id in contact_ids:
+        contact_prof = Profile.query.filter_by(user_id=contact_id)
+        contact = User.query.get_or_404(user_id)
+        
+        #displays contacts like in whatsapp ig
+        contact_list.append({
+            "username": contact.username,
+            "photo": contact_prof.photo_url,
+            "bio": contact_prof.bio
+        })
+    return jsonify({"contacts": contact_list}), 200
+
+
+@app.route('/api/v1/messages/<match_id>', methods=['GET'])
+@login_required
+def message_display(match_id):
+    """
+    Displays messages sent between two users.
+    """
+    messages = get_message_history(match_id)
+    
+    message_list = []
+    for message in messages:
+        message_list.append({
+            "message_id": message.message_id,
+            "sender_id": message.sender_id,
+            "content": message.content,
+            "timestamp": message.timestamp,
+        })
+    return jsonify({"messages": message_list}), 200
+    
+    
+@app.route('/api/v1/messages/<match_id>', methods=['POST'])
+@login_required
+def send_message(match_id):
+    #get content from message form
+    content = message.data 
+    
+    new_message = Message(sender_id=current_user, content=content, match_id=match_id)
+    db.session.add(new_message)
+    db.session.commit()
+    return jsonify({"message": "Message sent!",
+                    "message_id": new_message.message_id }), 201
+
+def get_message_history(match_id):
+    Message.query.filter_by(match_id=match_id).order_by(Message.timestamp).all()
+        
+        
+        
 ###
 # The functions below should be applicable to all Flask apps.
 ###

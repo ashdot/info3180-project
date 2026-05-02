@@ -36,6 +36,14 @@ class User(db.Model):
         if not self.has_liked(profile):
             new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='Maybe', action='like')
             db.session.add(new_like)
+        
+    def remove_like(self, profile):
+        like_record = Like.query.filter_by(
+        liker_id=self.user_id, 
+        liked_id=profile.user_id, 
+        action='like').first()
+        if like_record:
+            db.session.delete(dislike_record)
 
     def dislike(self, profile):
         """
@@ -45,6 +53,15 @@ class User(db.Model):
         """
         new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='False', action='dislike') 
         db.session.add(new_like)
+        
+    def remove_dislike(self, profile):
+        dislike_record = Like.query.filter_by(
+        liker_id=self.user_id, 
+        liked_id=profile.user_id, 
+        action='dislike').first()
+    
+        if dislike_record:
+            db.session.delete(dislike_record)
         
     def has_disliked(self, profile):
         # Check if a like already exists
@@ -95,7 +112,7 @@ class Like(db.Model):
         except NameError:
             return str(self.like_id)  # python 3 support
 
-class Match:
+class Match(db.Model):
     __tablename__ = 'matches'
     
     match_id = db.Column(db.Integer, primary_key=True)
@@ -113,4 +130,24 @@ class Match:
             return unicode(self.match_id)  # python 2 support
         except NameError:
             return str(self.match_id)  # python 3 support
+        
+        
+class Message(db.Model):
+    __tablename__ = 'messages'
+    message_id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    content = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=db.func.now())
+ 
+    
+    def __init__(self, sender_id, content, match_id):
+        self.sender_id = sender_id
+        self.content = content
+        
+    def get_message_id(self):
+        try:
+            return unicode(self.message_id)  # python 2 support
+        except NameError:
+            return str(self.message_id)  # python 3 support
+        
         
