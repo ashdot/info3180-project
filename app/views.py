@@ -59,29 +59,30 @@ def login():
 def signup():
     data = request.get_json() 
     
-    #Checks to see if email is already registered  
     if User.query.filter_by(email=data.get('email')).first():
         return jsonify({"error": "Email already exists"}), 400
 
     try:
+        # Creates the User object
         new_user = User(
-            email=data.get('email'),
-            username=data.get('username'),
             first_name=data.get('first_name'),
             last_name=data.get('last_name'),
-            # Ensure data.get('dob') is converted to a date object if necessary
+            username=data.get('username'),
             dob=data.get('dob'), 
+            looking_for=data.get('looking_for', 'Casual'), # Provide a default if missing
+            password=data.get('password'),
+            email=data.get('email'),
             gender=data.get('gender')
         )
-        new_user.set_password(data.get('password'))
         
         db.session.add(new_user)
+        # Flush sends the SQL to the DB so the user_id is generated
         db.session.flush() 
 
+        #Creates the Profile object automatically
         new_profile = Profile(
-            user_id=new_user.id,
-            preference=data.get('looking_for'), #Should we do this 
-            visibility="Public", #Sets Visibility as Default 
+            user_id=new_user.user_id, 
+            visibility="Public", #Sets visibility of Profile to public automatically 
             education=None,
             photo_url=None,
             bio=None,
@@ -91,28 +92,75 @@ def signup():
         db.session.add(new_profile)
         db.session.commit() 
 
-        #We could do a message that says "Welcome to DriftDater [USER] !"
-        return jsonify({"message": "User and Profile created successfully!"}), 201
+        return jsonify({"message": f"Welcome to DriftDater {new_user.username}!"}), 201
         
     except Exception as e:
         db.session.rollback() 
         return jsonify({"error": str(e)}), 500
     
 
-#List all user Profiles 
 
 
-#Get a singular Profile 
+# List all user Profiles
+@app.route('/api/v1/profile/all', methods=['GET'])
+#@login_required 
+def list_profile():
+
+    # Query all profiles and join with User to avoid N+1 query issues
+    profiles = Profile.query.all()
+    
+    result = []
+    for p in profiles:
+        result.append({
+            "profile_id": p.profile_id,
+            "user_id": p.user_id,
+            "username": p.user.username if p.user else "Unknown",
+            "full_name": f"{p.user.first_name} {p.user.last_name}" if p.user else "Unknown",
+            "photo_url": p.photo_url,
+            "location": p.location,
+            "age": p.age,
+            "interests": p.interests,
+            "visibility": p.visibility
+        })
+        
+    return jsonify({"status": "success", "profiles": result}), 200
+
+
+# Gets a singular Profile when clicked on 
+@app.route('/api/v1/profile/<int:user_id>', methods=['GET'])
+#@login_required 
+def single_profile(user_id):
+
+    # We query by user_id since your route uses <user_id>
+    profile = Profile.query.filter_by(user_id=user_id).first_or_404()
+    
+    return jsonify({
+        "status": "success",
+        "data": {
+            "profile_id": profile.profile_id,
+            "user_id": profile.user_id,
+            "username": profile.user.username,
+            "bio": profile.bio,
+            "education": profile.education,
+            "location": profile.location,
+            "photo_url": profile.photo_url,
+            "interests": profile.interests,
+            "age": profile.age,
+            "looking_for": profile.looking_for, # Using your hybrid property
+            "visibility": profile.visibility
+        }
+    }), 200
 
 
 
 
-
+#Displays current user's profile 
 @app.route('/api/v1/profile', methods=['GET'])
 #@login_required 
 def display_profile():
     data = request.get_json()
     
+    #Gets current user's profile
     profile = Profile.query.filter_by(username=current_user).first()
 
     if not profile:
@@ -134,11 +182,14 @@ def display_profile():
     }), 200
 
 
+#Allows edits to be made to the current profile 
 @app.route('/api/v1/profile/edit', methods=['PUT'])
-# @login_required
+#@login_required
 def edit_profile():
 
+    #Gets current user's profile
     profile = Profile.query.filter_by(user_id=current_user.user_id).first()
+
     data = request.form
     photo = request.files.get('photo')
 
@@ -156,7 +207,6 @@ def edit_profile():
         
         profile.update_profile(
             visibility=data.get('visibility'),
-            preference=data.get('preference'),
             education=data.get('education'),
             bio=data.get('bio'),
             location=data.get('location')
@@ -171,6 +221,8 @@ def edit_profile():
         return jsonify({"error": str(e)}), 500
 
 
+
+#Age range function to display on profile 
 def age_range(age):
 
     age_ranges = {1: "18-20",2:"21-30", 3: "31-40", 4: "41-50", 5: "51-60", 6: "60+"}
@@ -189,12 +241,19 @@ def age_range(age):
         return age_ranges[6]
         
 
-@app.route('/api/v1/auth/logout')
-#@login_required
+
+
+@app.route('/api/v1/auth/logout', methods=['POST', 'GET'])
+@login_required
 def logout():
+
+    # Clears the session cookie and logs the user out
     logout_user()
-    #return redirect()
-    pass
+    
+    return jsonify({
+        "status": "success",
+        "message": "See you later! Hope your next match is just a 'drift' away."
+    }), 200
 
 
 ###

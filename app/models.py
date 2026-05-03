@@ -179,7 +179,6 @@ class Profile(db.Model):
     profile_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False, unique=True)
     visibility = db.Column(db.String(50), nullable=False, default="Public") 
-    preference = db.Column(db.String(50), nullable=True) 
     education = db.Column(db.String(50), nullable=True) 
     photo_url = db.Column(db.String(255), nullable=True)
     bio = db.Column(db.String(255), nullable=True) 
@@ -195,11 +194,10 @@ class Profile(db.Model):
     # Relationship back to User
     user = db.relationship('User', backref=db.backref('profile', uselist=False))
 
-    def __init__(self, user_id, visibility="Public", interests= None, preference=None, education=None, photo_url=None, bio=None, location=None):
+    def __init__(self, user_id, visibility="Public", interests= None, education=None, photo_url=None, bio=None, location=None):
         self.user_id = user_id 
         self.visibility = visibility
         self.interests = interests
-        self.preference = preference 
         self.education = education 
         self.photo_url = photo_url
         self.bio = bio
@@ -249,8 +247,6 @@ class Profile(db.Model):
             self.interests = interests
 
         # Update Profile-level data
-        if preference: #Do we even need to display preferences on profiles
-            self.preference = preference 
         if education:
             self.education = education 
         if photo_url:
