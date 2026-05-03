@@ -235,12 +235,12 @@ def display_matches():
     
     profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
     
-    user= db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
+    user= db.session.execute(db.select(User).filter_by(user_id=user_id)).scalar_one() 
     
     scored_match_list = []
     for profile in profiles:
         candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
-        user = {'location': user.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.interests, 'gender': user.preferences.gender_pref}
+        user = {'location': user.profile.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.profile.interests, 'gender': user.preferences.gender_pref}
         
         score = calculate_match_score(user, candidate)
         photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url

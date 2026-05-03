@@ -32,6 +32,9 @@ class User(db.Model):
         self.email = email
         self.gender = gender
         
+    
+    preferences = db.relationship('Preference', backref=db.backref('user', uselist=False))
+        
     #likes_given = db.relationship('Like', foreign_keys=['Like.liker_id'], backref='author', lazy='dynamic')
     #likes_received = db.relationship('Like', foreign_keys=['Like.liked_id'], backref='target', lazy='dynamic')
 
@@ -132,7 +135,6 @@ class Profile(db.Model):
 
     # Relationship back to User
     user = db.relationship('User', backref=db.backref('profile', uselist=False))
-    preferences = db.relationship('Preference', backref=db.backref('profile', uselist=False))
 
     def __init__(self, user_id, visibility="Public", interests= None, preference=None, education=None, photo_url=None, bio=None, location=None):
         self.user_id = user_id 
