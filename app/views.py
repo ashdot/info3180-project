@@ -269,29 +269,32 @@ def logout():
 # Matching Algorithm
 ###
 
-def calculate_match_score(user, candidate): #user is a dict put together in another function
+def calculate_match_score(user, profile): #user is a dict put together in another function
     """
     Calculates a match score based on 4 categories.
     Categories: Location, Age, Interests and Gender
     """
     score = 0
+    candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
+    user_pref = {'location': user.profile.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.profile.interests, 'gender': user.preferences.gender_pref}
+        
     # Weights for each category (optional, adds precision)
     weights = {'location': 0.5, 'age': 1.5, 'interests': 0.5, 'gender': 1.5} 
         
-    if candidate['location'] == user['location']:
+    if candidate['location'] == user_pref['location']:
         score += weights['location']
         
-    min_age = user['age'][0]
-    max_age = user['age'][1]
+    min_age = user_pref['age'][0]
+    max_age = user_pref['age'][1]
     if candidate['age'] >= min_age and candidate['age'] <= max_age: 
         score += weights['age'] 
 
     #Adds 0.5 to score for each matching interest.
     for i in candidate['interests']:
-        if i in user['interests']: 
+        if i in user_pref['interests']: 
             score += weights['interests']
             
-    if candidate['gender'] == user['gender'] or user['gender'] == 'Both':
+    if candidate['gender'] == user_pref['gender'] or user_pref['gender'] == 'Both':
         score += weights['gender']
         
     return score
@@ -310,14 +313,11 @@ def display_matches():
     
     profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
     
-    user= db.session.execute(db.select(User).filter_by(user_id=user_id)).scalar_one() 
+    user = db.session.execute(db.select(User).filter_by(user_id=user_id)).scalar_one() 
     
     scored_match_list = []
     for profile in profiles:
-        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
-        user = {'location': user.profile.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.profile.interests, 'gender': user.preferences.gender_pref}
-        
-        score = calculate_match_score(user, candidate)
+        score = calculate_match_score(user, profile)
         photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url
 
         scored_match_list.append({
@@ -571,9 +571,10 @@ def search_profiles():
     # Sort options (newest, most similar, etc.)
     sort_by = request.args.get('sort_by', 'newest')
     if sort_by == 'newest':
+        #query = query.order_by(Profile.created_at.desc())
         results.sort(key=lambda x: x[0].created_at, reverse=True)
     elif sort_by == 'most_similar':
-        current_user_profile = Profile.query.filter_by(user_id=request.user_id).first() 
+        current_user_profile = User.query.filter_by(user_id=current_user.user_id).first() 
         results.sort(key=lambda x: calculate_match_score(current_user_profile, x[0]), reverse=True)
     
     # Format results for JSON response
