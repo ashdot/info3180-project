@@ -117,7 +117,6 @@ class Profile(db.Model):
     profile_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False, unique=True)
     visibility = db.Column(db.String(50), nullable=False, default="Public") 
-    preference = db.Column(db.String(50), nullable=True) 
     education = db.Column(db.String(50), nullable=True) 
     photo_url = db.Column(db.String(255), nullable=True)
     bio = db.Column(db.String(255), nullable=True) 
@@ -134,11 +133,10 @@ class Profile(db.Model):
     user = db.relationship('User', backref=db.backref('profile', uselist=False))
     preferences = db.relationship('Preference', backref=db.backref('profile', uselist=False))
 
-    def __init__(self, user_id, visibility="Public", interests= None, preference=None, education=None, photo_url=None, bio=None, location=None):
+    def __init__(self, user_id, visibility="Public", interests= None, education=None, photo_url=None, bio=None, location=None):
         self.user_id = user_id 
         self.visibility = visibility
         self.interests = interests
-        self.preference = preference 
         self.education = education 
         self.photo_url = photo_url
         self.bio = bio
@@ -167,7 +165,7 @@ class Profile(db.Model):
             return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
         return None
 
-    def update_profile(self, visibility=None, interests=None, preference=None, education=None, 
+    def update_profile(self, visibility=None, interests=None, education=None, 
                        photo_url=None, bio=None, location=None, looking_for=None):
         """Updates profile fields and associated user fields."""
         allowed_options = ['Public', 'Private']
@@ -186,8 +184,6 @@ class Profile(db.Model):
             self.interests = interests
 
         # Update Profile-level data
-        if preference: #Do we even need to display preferences on profiles
-            self.preference = preference 
         if education:
             self.education = education 
         if photo_url:
@@ -210,7 +206,7 @@ class Preference(db.Model):
 
     pref_id = db.Column(db.Integer, primary_key=True)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
 
     # Gender Preference (e.g., 'Male', 'Female', 'Non-binary', 'Everyone')
     gender_pref = db.Column(db.String(50), nullable=True)
@@ -225,7 +221,7 @@ class Preference(db.Model):
     age_min = db.Column(db.Integer, default=18)
     age_max = db.Column(db.Integer, default=99)
     
-    def __init__(self, user_id, gender_pref, education_pref, religion_pref, age_min, age_max):
+    def __init__(self, user_id, gender_pref=None, education_pref=None, religion_pref=None, age_min=18, age_max=99):
         self.user_id = user_id
         self.gender_pref = gender_pref
         self.education_pref = education_pref
