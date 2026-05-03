@@ -5,13 +5,12 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, jsonify, send_file
-from datetime import date, datetime  
-from app.models import db, User, Profile
+
+
 import os
 from app import app
 from . import db 
+from datetime import date, datetime  
 from app.models import User, Profile, Preference, Like, Match, Message
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
