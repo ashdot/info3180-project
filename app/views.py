@@ -8,7 +8,7 @@ This file creates your application.
 import os
 from app import app
 from . import db 
-from app.models import User, Profile, Preference, Like, Match, Message
+from app.models import User, Profile, Preference, Like, Match, Message, SavedProfile
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
 from flask_login import login_user, logout_user, verify_password, current_user, login_required
@@ -25,13 +25,21 @@ from sqlalchemy import or_
 def index():
     return jsonify(message="This is the beginning of our API")
 
+###
+# User Authentification and Profile Management 
+###
 
 @app.route('/api/v1/auth/login', methods=['POST']) 
 def login():
+    """
+    Allows user to login to Drift Dater. 
+    """
     data = request.get_json()
 
+    #If email or password not valid, an error is thrown 
     if not data or not data.get('email') or not data.get('password'):
         return jsonify({"error": "Missing email or password"}), 400
+
 
     user = User.query.filter_by(email=data.get('email')).first()
 
@@ -53,8 +61,12 @@ def login():
 
 @app.route('/api/v1/signup', methods=['POST'])
 def signup():
+    """
+    Allows user to create a user account.
+    """
     data = request.get_json() 
     
+    #Checks to see if the user already exists 
     if User.query.filter_by(email=data.get('email')).first():
         return jsonify({"error": "Email already exists"}), 400
 
@@ -72,6 +84,7 @@ def signup():
         )
         
         db.session.add(new_user)
+
         # Flush sends the SQL to the DB so the user_id is generated
         db.session.flush() 
 
@@ -94,7 +107,18 @@ def signup():
         db.session.rollback() 
         return jsonify({"error": str(e)}), 500
     
-
+@app.route('/api/v1/auth/logout')
+#@login_required
+def logout():
+    """
+    Clears the session cookie and logs the user out
+    """
+    logout_user()
+    
+    return jsonify({
+        "status": "success",
+        "message": "See you later! Hope your next match is just a 'drift' away."
+    }), 200
 
 
 # List all user Profiles
@@ -121,11 +145,13 @@ def list_profile():
         
     return jsonify({"status": "success", "profiles": result}), 200
 
-
-# Gets a singular Profile when clicked on 
+ 
 @app.route('/api/v1/profile/<int:user_id>', methods=['GET'])
 #@login_required 
 def single_profile(user_id):
+    """
+    Gets a singular Profile when clicked on 
+    """
 
     # We query by user_id since your route uses <user_id>
     profile = Profile.query.filter_by(user_id=user_id).first_or_404()
@@ -148,12 +174,12 @@ def single_profile(user_id):
     }), 200
 
 
-
-
-#Displays current user's profile 
 @app.route('/api/v1/profile', methods=['GET'])
 #@login_required 
 def display_profile():
+    """
+    Displays current user's profile
+    """
     data = request.get_json()
     
     #Gets current user's profile
@@ -180,10 +206,12 @@ def display_profile():
     }), 200
 
 
-#Allows edits to be made to the current profile 
 @app.route('/api/v1/profile/edit', methods=['PUT'])
 #@login_required
 def edit_profile():
+    """
+    Allows edits to be made to the current profile
+    """
 
     #Gets current user's profile
     profile = Profile.query.filter_by(user_id=current_user.user_id).first()
@@ -239,17 +267,49 @@ def age_range(age):
         return age_ranges[6]
         
 
-@app.route('/api/v1/auth/logout')
-#@login_required
-def logout():
 
-    # Clears the session cookie and logs the user out
-    logout_user()
+
+
+@app.route('/api/v1/profiles/<int:id>/save', methods=['POST'])
+@login_required
+def save_profile(id):
+    """
+    A user can save the profile of another user .
+    """
+    #Fetchs the target user/profile
+    target_user = User.query.get_or_404(id)
     
-    return jsonify({
-        "status": "success",
-        "message": "See you later! Hope your next match is just a 'drift' away."
-    }), 200
+    #Prevent self-saving
+    if current_user.user_id == target_user.user_id:
+        return jsonify({"error": "You cannot save your own profile"}), 400
+
+    #Check if already saved
+    existing_save = SavedProfile.query.filter_by(
+        saver_id=current_user.user_id, 
+        saved_id=target_user.user_id
+    ).first()
+
+    if existing_save:
+
+        #If it exists, remove it (Unsave)
+        db.session.delete(existing_save)
+        db.session.commit()
+        return jsonify({"message": "Profile unsaved successfully"}), 200
+    else:
+        #If it doesn't exist, create it (Save)
+        new_save = SavedProfile(saver_id=current_user.user_id, saved_id=target_user.user_id)
+        db.session.add(new_save)
+        db.session.commit()
+        return jsonify({"message": "Profile saved successfully"}), 201
+
+
+#Create this method 
+@app.route('/api/v1/profiles/set-preferences', methods=['POST'])
+@login_required
+def set_preferences():
+
+    pass
+
 
 
 ###
@@ -511,6 +571,9 @@ def get_message_history(match_id):
 def get_photo(filename):
     return send_from_directory(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']), filename)  
         
+
+
+
 ###
 # The functions below should be applicable to all Flask apps.
 ###

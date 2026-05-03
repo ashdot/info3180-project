@@ -1,7 +1,7 @@
 # Add any form classes for Flask-WTF here
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField
-from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed, SelectMultipleField
+from wtforms import StringField, IntegerField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField
+from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed, SelectMultipleField,NumberRange, Optional
 
 
 class LoginForm(FlaskForm):
@@ -72,3 +72,70 @@ class EditProfile(FlaskForm):
 class MessageForm(FlaskForm):
     message = StringField('Message', validators=[InputRequired()])
     submit = SubmitField('Send')
+
+
+class PreferencesForm(FlaskForm):
+
+    # Gender Preference
+    gender_pref = SelectField(
+        'Gender Preference',
+        choices=[
+            ('Everyone', 'Everyone'),
+            ('Male', 'Male'),
+            ('Female', 'Female'),
+            ('Non-binary', 'Non-binary')
+        ],
+        validators=[Optional()]
+    )
+
+    # Education Level Preference
+    education_pref = SelectField(
+        'Education Level',
+        choices=[
+            ('Any', 'Any'),
+            ('High School', 'High School'),
+            ('Bachelors', 'Bachelors'),
+            ('Masters', 'Masters'),
+            ('PhD', 'PhD')
+        ],
+        validators=[Optional()]
+    )
+
+    # Religion Preference
+    religion_pref = SelectField(
+        'Religion Preference',
+        choices=[
+            ('Open', 'Open'),
+            ('Christian', 'Christian'),
+            ('Muslim', 'Muslim'),
+            ('Atheist', 'Atheist'),
+            ('Other', 'Other')
+        ],
+        validators=[Optional()]
+    )
+
+    # Age Range 
+    age_min = IntegerField(
+        'Minimum Age',
+        default=18,
+        validators=[NumberRange(min=18, max=99)]
+    )
+    
+    age_max = IntegerField(
+        'Maximum Age',
+        default=99,
+        validators=[NumberRange(min=18, max=99)]
+    )
+
+    submit = SubmitField('Save Preferences')
+
+# Custom validator to ensure min isn't higher than max - GEMINI 
+def validate(self, extra_validators=None):
+    initial_validation = super(PreferencesForm, self).validate(extra_validators)
+    if not initial_validation:
+        return False
+    
+    if self.age_min.data > self.age_max.data:
+        self.age_min.errors.append('Minimum age cannot be greater than maximum age.')
+        return False
+    return True

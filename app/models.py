@@ -302,5 +302,14 @@ class Message(db.Model):
         return f'<Message from {self.sender_id} to {self.receiver_id} at {self.timestamp}>'
     
     
-    
-    #d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)
+#d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)
+class SavedProfile(db.Model):
+    __tablename__ = 'saved_profiles'
+    id = db.Column(db.Integer, primary_key=True)
+    saver_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    saved_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now())
+
+    # Ensure a user can't save the same person twice
+    __table_args__ = (db.UniqueConstraint('saver_id', 'saved_id', name='_saver_saved_uc'),)
+
