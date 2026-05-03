@@ -7,11 +7,18 @@ This file creates your application.
 
 from app import app
 from flask import render_template, request, jsonify, send_file, flash
-from flask_login import login_user, logout_user, verify_password, login_required 
-from .forms import LoginForm, SignUpForm
+from flask_login import login_user, logout_user, verify_password, login_required, current_user
+from .forms import LoginForm, SignUpForm, EditProfile
 from .models import User, Profile 
 from . import db 
+from werkzeug.utils import secure_filename
 import os
+from app import app, db
+from app.models import User, Profile, Preference, Like, Match, Message
+from flask import render_template, request, jsonify, send_file
+from flask_login import login_user, logout_user, current_user, login_required
+from sqlalchemy import or_
+
 
 
 ###
@@ -23,31 +30,36 @@ def index():
     return jsonify(message="This is the beginning of our API")
 
 
-# @app.route('/api/login', methods=['GET','POST'])
-# def login():
-#     if request.method == 'POST':
+@app.route('/api/v1/auth/login', methods=['POST']) 
+def login():
+    data = request.get_json()
 
-#         email = request.form['email']
-#         password = request.form['password']
-#         user_data = User.query.filter_by(email=email).first()
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({"error": "Missing email or password"}), 400
 
-#         if user_data and verify_password(password, user_data.password):
+    user = User.query.filter_by(email=data.get('email')).first()
 
-#             
-#              
-            
-#             
-#             
-#             
+ 
+    if user and user.check_password(data.get('password')):
+        login_user(user, remember=True) 
+        
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "username": user.username,
+                "first_name": user.first_name,
+                "user_id": user.user_id
+            }
+        }), 200
 
-#     #Connect to Vue 
-#     pass
+    return jsonify({"error": "Invalid email or password"}), 401
 
 
-@app.route('/api/signup', methods=['POST'])
+@app.route('/api/v1/signup', methods=['POST'])
 def signup():
     data = request.get_json() 
     
+    #Checks to see if email is already registered  
     if User.query.filter_by(email=data.get('email')).first():
         return jsonify({"error": "Email already exists"}), 400
 
@@ -57,60 +69,127 @@ def signup():
             username=data.get('username'),
             first_name=data.get('first_name'),
             last_name=data.get('last_name'),
+            # Ensure data.get('dob') is converted to a date object if necessary
             dob=data.get('dob'), 
-            gender=data.get('gender'),
-            looking_for=data.get('looking_for')
+            gender=data.get('gender')
         )
         new_user.set_password(data.get('password'))
         
         db.session.add(new_user)
-        db.session.commit()
+        db.session.flush() 
+
+        new_profile = Profile(
+            user_id=new_user.id,
+            preference=data.get('looking_for'), #Should we do this 
+            visibility="Public", #Sets Visibility as Default 
+            education=None,
+            photo_url=None,
+            bio=None,
+            location=None
+        )
         
-        return jsonify({"message": "User created successfully!"}), 201
+        db.session.add(new_profile)
+        db.session.commit() 
+
+        #We could do a message that says "Welcome to DriftDater [USER] !"
+        return jsonify({"message": "User and Profile created successfully!"}), 201
         
     except Exception as e:
+        db.session.rollback() 
         return jsonify({"error": str(e)}), 500
     
-@app.route('/api/profile/create', methods=['POST'])
-#@login_required 
-def create_profile():
-    data = request.get_json()
-    
-    
-    new_profile = Profile(
-        user_id=data.get('user_id'),
-        age=data.get('age'),
-        photo=data.get('photo_url'),
-        bio=data.get('bio'),
-        location=data.get('location')
-    )
-    
-    db.session.add(new_profile)
 
-    db.session.commit()
-    
-    return jsonify({"message": "Profile saved!"}), 201
+#List all user Profiles 
 
-@app.route('/api/profile', methods=['GET'])
+
+#Get a singular Profile 
+
+
+
+
+
+@app.route('/api/v1/profile', methods=['GET'])
 #@login_required 
 def display_profile():
     data = request.get_json()
     
-    
     profile = Profile.query.filter_by(username=current_user).first()
-    
+
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 404
+
+    current_age = profile.age 
+    age_display = age_range(current_age)
+
     return jsonify({
-        "username": profile.user.username, # Accessing via backref
+        "username": profile.user.username, 
         "first_name": profile.user.first_name,
-        "age": profile.age,
+        "age": age_display,
         "bio": profile.bio,
-        "photo": profile.photo,
+        "photo": profile.photo_url,
         "location": profile.location,
         "gender": profile.gender,
-        "looking_for": profile.looking_for
+        "looking_for": profile.looking_for,
+        "interests": profile.interests
     }), 200
 
-@app.route('/api/logout')
+
+@app.route('/api/v1/profile/edit', methods=['PUT'])
+# @login_required
+def edit_profile():
+
+    profile = Profile.query.filter_by(user_id=current_user.user_id).first()
+    data = request.form
+    photo = request.files.get('photo')
+
+    try:
+        
+        if data.get('bio') and len(data.get('bio')) > 255:
+            return jsonify({"error": "Bio too long"}), 400
+
+        
+        if photo:
+            filename = secure_filename(photo.filename)
+            photo.save(os.path.join(app.root_path, 'app/uploads', filename))
+            profile.photo_url = filename
+
+        
+        profile.update_profile(
+            visibility=data.get('visibility'),
+            preference=data.get('preference'),
+            education=data.get('education'),
+            bio=data.get('bio'),
+            location=data.get('location')
+        )
+
+        return jsonify({
+            "message": "Profile updated successfully",
+            "photo_url": profile.photo_url 
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def age_range(age):
+
+    age_ranges = {1: "18-20",2:"21-30", 3: "31-40", 4: "41-50", 5: "51-60", 6: "60+"}
+
+    if age >= 18 and age <= 20:
+        return age_ranges[1]
+    if age >= 21 and age <= 30:
+        return age_ranges[2]
+    if age >= 31 and age <= 40:
+        return age_ranges[3]
+    if age >= 41 and age <= 50:
+        return age_ranges[4]
+    if age >= 51 and age <= 60:
+        return age_ranges[5]
+    if age > 60:
+        return age_ranges[6]
+        
+
+@app.route('/api/v1/auth/logout')
 #@login_required
 def logout():
     logout_user()
@@ -118,6 +197,241 @@ def logout():
     pass
 
 
+###
+# Matching Algorithm
+###
+
+def calculate_match_score(user, candidate): #user is a dict put together in another function
+    """
+    Calculates a match score based on 4 categories.
+    Categories: Location, Age, Interests and Gender
+    """
+    score = 0
+    # Weights for each category (optional, adds precision)
+    weights = {'location': 0.5, 'age': 1.5, 'interests': 0.5, 'gender': 1.5} 
+        
+    if candidate['location'] in user['location']:
+        score += weights['location']
+        
+    min_age = user['age'][:2]
+    max_age = user['age'][-2:]
+    if candidate['age'] >= min_age and candidate['age'] <= max_age: 
+        score += weights['age'] 
+
+    #Adds 0.5 to score for each matching interest.
+    for i in candidate['interests']:
+        if i in user['interests']: #maybe use the lower function on all items in user interests with a loop
+            score += weights['interests']
+            
+    if candidate['gender'] == user['gender']:
+        score += weights['gender']
+    return score
+
+@app.route('/api/v1/matches', methods = ['GET'])
+@login_required
+def display_matches(): 
+    """
+    Displays matched profiles to logged in users
+    """
+    user_id = current_user.id
+    
+    #remove all profiles the user has already viewed
+    interacted = db.session.query(Like.liked_id).filter(Like.liker_id == user_id).all()
+    interacted_ids = [i[0] for i in interacted] + [user_id]
+    
+    profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
+    
+    user_info = db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
+    user_pref = db.session.execute(db.select(Preference).filter_by(user_id=user_id)).scalar_one() 
+    
+    scored_match_list = []
+    for profile in profiles:
+        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.gender}
+        user = {'location': user_info.location, 'age': user_pref.age_range, 'interests': user_info.interests, 'gender': user_pref.gender_pref}
+         
+        score = calculate_match_score(user, candidate)
+        scored_match_list.append({
+            "id": profile.user_id,
+            "location": profile.location,
+            "age": profile.age,
+            "interests": profile.interests,
+            "gender": profile.gender,
+            "score": score
+        })
+    #top_50_matches = scored_match_list[:50]
+    #return jsonify({"matches": top_50_matches, "total_available": len(scored_match_list)}), 200
+    
+    return jsonify({"matches": scored_match_list}), 200
+
+@app.route('/api/v1/profiles/<id>/like', methods = ['POST'])
+@login_required
+def like_profile(id):
+    """
+    When users like a profile, the like is saved to the database.
+    If the likes between the two users are mutual, 
+    the system asks the user to confirm the match
+    """
+    profile_to_like = User.query.get_or_404(id)
+    
+    # Check if the user is trying to like themselves
+    if current_user.id == profile_to_like.id:
+        return jsonify({"error": "You cannot like your own profile"}), 400
+
+    # remove like from database if user presses like again
+    if current_user.has_liked(profile_to_like):
+        current_user.remove_like(profile_to_like)
+
+        #remove any match records if like is removed
+        match_record = Match.query.filter(((Match.user1_id == current_user.user_id) & (Match.user2_id == profile_to_like.user_id))).first()
+        match_record_rev = Match.query.filter(((Match.user1_id == profile_to_like.user_id) & (Match.user2_id == current_user.user_id))).first()
+        if match_record:
+            db.session.delete(match_record)
+        if match_record_rev:
+            db.session.delete(match_record_rev)
+        
+        db.session.commit()
+        return jsonify({"message": "Like removed"}), 200
+   
+    # if the above cases are false, like the profile and add like record to database
+    current_user.like(profile_to_like)
+    db.session.commit()
+    total_likes = profile_to_like.likes_received.count()
+    
+    is_mutual = profile_to_like.has_liked(current_user)
+    
+    #to be fixed
+    if is_mutual:
+        existing_match = Match.query.filter(
+        or_(
+            (Match.user1_id == current_user.user_id) & (Match.user2_id == profile_to_like.user_id),
+            (Match.user1_id == profile_to_like.user_id) & (Match.user2_id == current_user.user_id)
+        )
+    ).first()
+        
+        if not existing_match:
+            new_match = Match(user1_id=current_user.user_id, user2_id=profile_to_like.user_id)
+            existing_like = Like.query.filter_by(liker_id=current_user.user_id, liked_id=profile_to_like.user_id, action='like').first()
+            if existing_like:
+                existing_like.is_match = 'Yes'
+                db.session.commit()
+            
+            existing_like_rev = Like.query.filter_by(liker_id=profile_to_like.user_id, liked_id=current_user.user_id, action='like').first()
+            if existing_like_rev:
+                existing_like.is_match = 'Yes'
+                db.session.commit()
+            
+            db.session.add(new_match)
+            db.session.commit()
+            return jsonify({"message": f"You have matched with {profile_to_like.username}",
+                            "match_id": new_match.match_id }), 201
+
+    
+    return jsonify({"message": f"You liked {profile_to_like.username}",
+                    "likes_count": profile_to_like.likes_received.count()}), 201
+
+
+@app.route('/api/v1/profiles/<id>/dislike', methods = ['POST'])
+@login_required
+def dislike_profile(id):
+    """
+    When users dislike a profile, the dislike is saved to the Likes database.
+    """
+    profile_to_dislike = User.query.get_or_404(id)
+    
+    # Check if the user is trying to like themselves
+    if current_user.id == profile_to_dislike.id:
+        return jsonify({"error": "You cannot dislike your own profile"}), 400
+
+    # Check if user already liked this profile
+    if current_user.has_disliked(profile_to_dislike):
+        current_user.remove_dislike(profile_to_dislike)
+        db.session.commit()
+        return jsonify({"message": "Dislike removed"}), 200
+    
+    current_user.dislike(profile_to_dislike)
+    db.session.commit()
+    
+    return jsonify({"message": f"You disliked {profile_to_dislike.username}"}), 201
+
+
+@app.route('/api/v1/profiles/<id>/pass', methods=['POST'])
+@login_required
+def pass_profile(id):
+    """
+    Check this later
+    """
+    profile_to_pass = User.query.get_or_404(id)
+    
+    # Check if interaction already exists
+    existing = Like.query.filter_by(liker_id=current_user.user_id, liked_id=profile_to_pass.user_id).first()
+    
+    if not existing:
+        # Save as a 'pass' action so it's filtered out of the algorithm next time
+        new_pass = Like(liker_id=current_user.user_id, liked_id=profile_to_pass.user_id, action='pass')
+        db.session.add(new_pass)
+        db.session.commit()
+        return jsonify({"message": "Profile passed. You won't see them again."}), 201
+    
+    return jsonify({"message": "Already interacted with this profile"}), 200
+   
+
+@app.route('/api/v1/contacts/<user_id>', methods=['GET'])
+@login_required
+def contacts(user_id):
+    """
+    Displays a contact list of mutual matches.
+    """
+    contact_ids = Like.query(Like.liked_id).filter_by(user1_id = user_id, is_match="Yes").all()
+    contact_list = []
+    for contact_id in contact_ids:
+        contact_prof = Profile.query.filter_by(user_id=contact_id)
+        contact = User.query.get_or_404(user_id)
+        
+        #displays contacts like in whatsapp ig
+        contact_list.append({
+            "username": contact.username,
+            "photo": contact_prof.photo_url,
+            "bio": contact_prof.bio
+        })
+    return jsonify({"contacts": contact_list}), 200
+
+
+@app.route('/api/v1/messages/<match_id>', methods=['GET'])
+@login_required
+def message_display(match_id):
+    """
+    Displays messages sent between two users.
+    """
+    messages = get_message_history(match_id)
+    
+    message_list = []
+    for message in messages:
+        message_list.append({
+            "message_id": message.message_id,
+            "sender_id": message.sender_id,
+            "content": message.content,
+            "timestamp": message.timestamp,
+        })
+    return jsonify({"messages": message_list}), 200
+    
+    
+@app.route('/api/v1/messages/<match_id>', methods=['POST'])
+@login_required
+def send_message(match_id):
+    #get content from message form
+    content = message.data 
+    
+    new_message = Message(sender_id=current_user, content=content, match_id=match_id)
+    db.session.add(new_message)
+    db.session.commit()
+    return jsonify({"message": "Message sent!",
+                    "message_id": new_message.message_id }), 201
+
+def get_message_history(match_id):
+    Message.query.filter_by(match_id=match_id).order_by(Message.timestamp).all()
+        
+        
+        
 ###
 # The functions below should be applicable to all Flask apps.
 ###
