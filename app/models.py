@@ -32,8 +32,8 @@ class User(db.Model):
         self.email = email
         self.gender = gender
         
-    likes_given = db.relationship('Like', foreign_keys=['Like.liker_id'], backref='author', lazy='dynamic')
-    likes_received = db.relationship('Like', foreign_keys=['Like.liked_id'], backref='target', lazy='dynamic')
+    #likes_given = db.relationship('Like', foreign_keys=['Like.liker_id'], backref='author', lazy='dynamic')
+    #likes_received = db.relationship('Like', foreign_keys=['Like.liked_id'], backref='target', lazy='dynamic')
 
     def like(self, profile):
         """
@@ -111,68 +111,6 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
-        
-class Like(db.Model):
-    __tablename__ = 'like'
-    
-    like_id = db.Column(db.Integer, primary_key=True)
-    liker_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
-    liked_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
-    created_at = db.Column(db.DateTime, default=db.func.now())
-    is_match = db.Column(db.String(128))
-    action = db.Column(db.String(128))
-    
-    def __init__(self, liker_id, liked_id, is_match, action):
-        self.liker_id = liker_id
-        self.liked_id = liked_id
-        self.is_match = is_match
-        self.action = action
-        
-    def get_like_id(self):
-        try:
-            return unicode(self.like_id)  # python 2 support
-        except NameError:
-            return str(self.like_id)  # python 3 support
-
-class Match(db.Model):
-    __tablename__ = 'matches'
-    
-    match_id = db.Column(db.Integer, primary_key=True)
-    user1_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
-    user2_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
-    matched_at = db.Column(db.DateTime, default=db.func.now())
-    
-    def __init__(self, user1_id, user2_id):
-        self.user1_id = user1_id
-        self.user2_id = user2_id
-        #find a way to ensure that no duplicates are entered.
-        
-    def get_match_id(self):
-        try:
-            return unicode(self.match_id)  # python 2 support
-        except NameError:
-            return str(self.match_id)  # python 3 support
-        
-        
-class Message(db.Model):
-    __tablename__ = 'messages'
-    message_id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
-    content = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, default=db.func.now())
- 
-    
-    def __init__(self, sender_id, content, match_id):
-        self.sender_id = sender_id
-        self.content = content
-        
-    def get_message_id(self):
-        try:
-            return unicode(self.message_id)  # python 2 support
-        except NameError:
-            return str(self.message_id)  # python 3 support
-        
-
 class Profile(db.Model):
     __tablename__ = 'profile'
 
@@ -194,6 +132,7 @@ class Profile(db.Model):
 
     # Relationship back to User
     user = db.relationship('User', backref=db.backref('profile', uselist=False))
+    preferences = db.relationship('Preference', backref=db.backref('profile', uselist=False))
 
     def __init__(self, user_id, visibility="Public", interests= None, preference=None, education=None, photo_url=None, bio=None, location=None):
         self.user_id = user_id 
@@ -239,8 +178,6 @@ class Profile(db.Model):
             else:
                 raise ValueError(f"Invalid visibility. Choose from {allowed_options}")
             
-       
-        
         # Update User-level data through the setter
         if looking_for is not None:
             self.looking_for = looking_for
@@ -285,31 +222,71 @@ class Preference(db.Model):
     religion_pref = db.Column(db.String(100), nullable=True)
 
     # Age Range
-
-    #Ask Rochele abt this 
     age_min = db.Column(db.Integer, default=18)
     age_max = db.Column(db.Integer, default=99)
+    
+    def __init__(self, user_id, gender_pref, education_pref, religion_pref, age_min, age_max):
+        self.user_id = user_id
+        self.gender_pref = gender_pref
+        self.education_pref = education_pref
+        self.religion_pref = religion_pref
+        self.age_min = age_min
+        self.age_max = age_max
 
     def __repr__(self):
         return f'<Preference User:{self.user_id} Age:{self.age_min}-{self.age_max}>'
 
 
-#d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)
+class Like(db.Model):
+    __tablename__ = 'like'
+    
+    like_id = db.Column(db.Integer, primary_key=True)
+    liker_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    liked_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    is_match = db.Column(db.String(128))
+    action = db.Column(db.String(128))
+    
+    def __init__(self, liker_id, liked_id, is_match, action):
+        self.liker_id = liker_id
+        self.liked_id = liked_id
+        self.is_match = is_match
+        self.action = action
+        
+    def get_like_id(self):
+        try:
+            return unicode(self.like_id)  # python 2 support
+        except NameError:
+            return str(self.like_id)  # python 3 support
 
+class Match(db.Model):
+    __tablename__ = 'matches'
+    
+    match_id = db.Column(db.Integer, primary_key=True)
+    user1_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    user2_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
+    matched_at = db.Column(db.DateTime, default=db.func.now())
+    
+    def __init__(self, user1_id, user2_id):
+        self.user1_id = user1_id
+        self.user2_id = user2_id
+        #find a way to ensure that no duplicates are entered.
+        
+    def get_match_id(self):
+        try:
+            return unicode(self.match_id)  # python 2 support
+        except NameError:
+            return str(self.match_id)  # python 3 support
+        
 
-
-
-
-
-
-class Messages(db.Model):
+class Message(db.Model):
     __tablename__ = 'messages'
 
     message_id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.Integer, db.ForeignKey('matches.match_id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    
     timestamp = db.Column(
         db.DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc)
@@ -317,11 +294,17 @@ class Messages(db.Model):
 
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
-
-    def __init__(self, sender_id, receiver_id, content):
+    match = db.relationship('Match', backref=db.backref('messages', lazy='dynamic'))
+    
+    def __init__(self, match_id, sender_id, receiver_id, content):
+        self.match_id = match_id
         self.sender_id = sender_id
         self.receiver_id = receiver_id
         self.content = content
 
     def __repr__(self):
         return f'<Message from {self.sender_id} to {self.receiver_id} at {self.timestamp}>'
+    
+    
+    
+    #d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)

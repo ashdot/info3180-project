@@ -67,3 +67,8 @@ class EditProfile(FlaskForm):
     location = StringField('Location', validators=[Length(max=100)])
     
     submit = SubmitField('Save Changes')
+
+
+class MessageForm(FlaskForm):
+    message = StringField('Message', validators=[InputRequired()])
+    submit = SubmitField('Send')

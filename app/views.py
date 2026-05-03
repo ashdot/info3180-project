@@ -5,18 +5,14 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, jsonify, send_file, flash
-from flask_login import login_user, logout_user, verify_password, login_required, current_user
-from .forms import LoginForm, SignUpForm, EditProfile
-from .models import User, Profile 
-from . import db 
-from werkzeug.utils import secure_filename
 import os
-from app import app, db
+from app import app
+from . import db 
 from app.models import User, Profile, Preference, Like, Match, Message
-from flask import render_template, request, jsonify, send_file
-from flask_login import login_user, logout_user, current_user, login_required
+from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
+from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
+from flask_login import login_user, logout_user, verify_password, current_user, login_required
+from werkzeug.utils import secure_filename
 from sqlalchemy import or_
 
 
@@ -98,14 +94,9 @@ def signup():
         db.session.rollback() 
         return jsonify({"error": str(e)}), 500
     
-
 #List all user Profiles 
 
-
 #Get a singular Profile 
-
-
-
 
 
 @app.route('/api/v1/profile', methods=['GET'])
@@ -121,12 +112,14 @@ def display_profile():
     current_age = profile.age 
     age_display = age_range(current_age)
 
+    photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url
+
     return jsonify({
         "username": profile.user.username, 
         "first_name": profile.user.first_name,
         "age": age_display,
         "bio": profile.bio,
-        "photo": profile.photo_url,
+        "photo": photo,
         "location": profile.location,
         "gender": profile.gender,
         "looking_for": profile.looking_for,
@@ -150,7 +143,7 @@ def edit_profile():
         
         if photo:
             filename = secure_filename(photo.filename)
-            photo.save(os.path.join(app.root_path, 'app/uploads', filename))
+            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             profile.photo_url = filename
 
         
@@ -190,7 +183,7 @@ def age_range(age):
         
 
 @app.route('/api/v1/auth/logout')
-#@login_required
+@login_required
 def logout():
     logout_user()
     #return redirect()
@@ -210,21 +203,22 @@ def calculate_match_score(user, candidate): #user is a dict put together in anot
     # Weights for each category (optional, adds precision)
     weights = {'location': 0.5, 'age': 1.5, 'interests': 0.5, 'gender': 1.5} 
         
-    if candidate['location'] in user['location']:
+    if candidate['location'] == user['location']:
         score += weights['location']
         
-    min_age = user['age'][:2]
-    max_age = user['age'][-2:]
+    min_age = user['age'][0]
+    max_age = user['age'][1]
     if candidate['age'] >= min_age and candidate['age'] <= max_age: 
         score += weights['age'] 
 
     #Adds 0.5 to score for each matching interest.
     for i in candidate['interests']:
-        if i in user['interests']: #maybe use the lower function on all items in user interests with a loop
+        if i in user['interests']: 
             score += weights['interests']
             
-    if candidate['gender'] == user['gender']:
+    if candidate['gender'] == user['gender'] or user['gender'] == 'Both':
         score += weights['gender']
+        
     return score
 
 @app.route('/api/v1/matches', methods = ['GET'])
@@ -241,21 +235,24 @@ def display_matches():
     
     profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
     
-    user_info = db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
-    user_pref = db.session.execute(db.select(Preference).filter_by(user_id=user_id)).scalar_one() 
+    user= db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
     
     scored_match_list = []
     for profile in profiles:
-        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.gender}
-        user = {'location': user_info.location, 'age': user_pref.age_range, 'interests': user_info.interests, 'gender': user_pref.gender_pref}
-         
+        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
+        user = {'location': user.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.interests, 'gender': user.preferences.gender_pref}
+        
         score = calculate_match_score(user, candidate)
+        photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url
+
         scored_match_list.append({
             "id": profile.user_id,
-            "location": profile.location,
-            "age": profile.age,
-            "interests": profile.interests,
-            "gender": profile.gender,
+            "photo": photo,
+            "username": profile.user.username,
+            "first_name": profile.user.first_name,
+            "last_name": profile.user.last_name,
+            "gender": profile.user.gender,
+            "bio": profile.bio,
             "score": score
         })
     #top_50_matches = scored_match_list[:50]
@@ -384,14 +381,17 @@ def contacts(user_id):
     contact_ids = Like.query(Like.liked_id).filter_by(user1_id = user_id, is_match="Yes").all()
     contact_list = []
     for contact_id in contact_ids:
-        contact_prof = Profile.query.filter_by(user_id=contact_id)
         contact = User.query.get_or_404(user_id)
-        
-        #displays contacts like in whatsapp ig
+        photo = url_for('get_photo', filename=contact.profile.photo_url) if contact.profile.photo_url else contact.profile.photo_url
+
+        # displays contacts like in whatsapp ig can use either username, 
+        # or firstname and lastname in frontend display
         contact_list.append({
             "username": contact.username,
-            "photo": contact_prof.photo_url,
-            "bio": contact_prof.bio
+            "first_name": contact.first_name,
+            "last_name": contact.last_name,
+            "photo": photo,
+            "bio": contact.profile.bio
         })
     return jsonify({"contacts": contact_list}), 200
 
@@ -407,10 +407,13 @@ def message_display(match_id):
     message_list = []
     for message in messages:
         message_list.append({
-            "message_id": message.message_id,
-            "sender_id": message.sender_id,
-            "content": message.content,
-            "timestamp": message.timestamp,
+            message_list.append({
+                "message_id": message.message_id,
+                "sender": message.sender.username,
+                "receiver": message.receiver.username,
+                "content": message.content,
+                "timestamp": message.timestamp.isoformat(), 
+})
         })
     return jsonify({"messages": message_list}), 200
     
@@ -418,19 +421,33 @@ def message_display(match_id):
 @app.route('/api/v1/messages/<match_id>', methods=['POST'])
 @login_required
 def send_message(match_id):
-    #get content from message form
-    content = message.data 
+    data = request.form
+    content = data.get('message')
+    match = Match.query.get_or_404(match_id)
     
-    new_message = Message(sender_id=current_user, content=content, match_id=match_id)
+    if current_user.user_id == match.user1_id:
+        receiver_id = match.user2_id
+    elif current_user.user_id == match.user2_id:
+        receiver_id = match.user1_id
+    else:
+        return jsonify({"error": "You cannot message this user"}), 403
+    new_message = Message(match_id=match_id, sender_id=current_user.user_id, receiver_id=receiver_id, content=content)
     db.session.add(new_message)
     db.session.commit()
     return jsonify({"message": "Message sent!",
                     "message_id": new_message.message_id }), 201
 
 def get_message_history(match_id):
-    Message.query.filter_by(match_id=match_id).order_by(Message.timestamp).all()
+    # return Message.query.filter_by(match_id=match_id).order_by(Message.timestamp.asc()).all()
+    match = Match.query.get(match_id)
+    if match:
+        # gets all messages associated with the match_id shared by the 2 users
+        return match.messages.order_by(Message.timestamp.asc()).all()
+    return []
         
-        
+@app.route('/api/v1/photo/<filename>')
+def get_photo(filename):
+    return send_from_directory(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']), filename)  
         
 ###
 # The functions below should be applicable to all Flask apps.
