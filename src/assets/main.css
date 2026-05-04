@@ -1,0 +1,13 @@
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    color: #333;
+}
+  
+h1, h2, h3 {
+    margin: 0;
+}
+  
+button {
+    cursor: pointer;
+}

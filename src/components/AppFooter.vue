@@ -1,8 +1,6 @@
 <template>
-      <footer class="mt-5">
-          <div class="container">
-              <p>Copyright &copy {{ year }} Flask Inc.</p>
-          </div>
+      <footer class="footer">
+            <p>Copyright &copy {{ year }} Flask Inc.</p>
       </footer>
 </template>
 
@@ -12,6 +10,17 @@ import { ref } from "vue";
 const year = (new Date).getFullYear();
 </script>
 
-<style>
-/* Add any component specific styles here */
+<style scoped>
+.footer {
+  background: black;
+  color: white;
+  text-align: center;
+  padding: 10px;
+  line-height: 1;
+}
+
+.footer p {
+  margin: 0;
+}
+
 </style>
