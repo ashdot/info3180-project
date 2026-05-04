@@ -2,7 +2,10 @@
   <div class="page">
     <div class="card">
 
-      <div class="logo-circle">❤</div>
+      <!--<div class="logo-circle">❤</div>-->
+      <div class="logo">
+        <img src="@/assets/logo.png" alt="DriftDater Logo" />
+      </div>
 
       <h1>Create Your Profile</h1>
       <p class="subtitle">Join thousands of singles looking for love</p>
@@ -180,6 +183,7 @@ export default {
   text-align: center;
 }
 
+/*
 .logo-circle {
   width: 70px;
   height: 70px;
@@ -190,6 +194,12 @@ export default {
   align-items: center;
   justify-content: center;
   color: white;
+}*/
+
+.logo img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
 }
 
 .subtitle {

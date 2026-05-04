@@ -2,7 +2,10 @@
   <div class="page">
     <div class="card">
       
-      <div class="logo-circle">❤</div>
+      <!--<div class="logo-circle">❤</div>-->
+      <div class="logo">
+        <img src="@/assets/logo.png" alt="DriftDater Logo" />
+      </div>
 
       <h1>Welcome Back</h1>
       <p class="subtitle">Sign in to continue your journey</p>
@@ -89,6 +92,7 @@ export default {
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
+/*
 .logo-circle {
   width: 70px;
   height: 70px;
@@ -100,6 +104,13 @@ export default {
   justify-content: center;
   color: white;
   font-size: 28px;
+}
+*/
+
+.logo img {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
 }
 
 .subtitle {
