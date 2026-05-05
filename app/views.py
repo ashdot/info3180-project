@@ -12,7 +12,7 @@ from app.models import db, User, Profile, Preference, Like
 import os
 from app import app
 from . import db 
-from app.models import User, Profile, Preference, Like, Match, Message
+from app.models import User, Profile, Preference, Like, Match, Message, Bookmark
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
 from flask_login import login_user, logout_user, verify_password, current_user, login_required
@@ -605,16 +605,16 @@ def bookmark_profiles():
     if not profile_id:
         return jsonify(error="Profile ID is required"), 400
     
-    profile = Profile.query.get(profile_id)
+    profile = Profile.query.filter_by(user_id=profile_id).first()
     if not profile:
         return jsonify(error="Profile not found"), 404
     
-    existing_bookmark = Like.query.filter_by(liker_id=request.user_id, liked_id=profile_id, action='bookmark').first()
+    existing_bookmark = Bookmark.query.filter_by(user_id=request.user_id, profile_id=profile_id).first()
     if existing_bookmark:
         return jsonify(error="Profile already bookmarked"), 400
     
     # Use of Like table with action='bookmark' inlcuded with 'like/dislike OR can use a separate Bookmark table
-    bookmark = Like.query.filter_by(liker_id=request.user_id, action='bookmark')
+    bookmark = Bookmark(user_id=request.user_id, profile_id=profile_id)
     db.session.add(bookmark)
     db.session.commit()
     
