@@ -13,15 +13,25 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     dob = db.Column(db.Date, nullable=True)
 
-    #should be Casual, Serious, Friendship or smt lke that 
-    looking_for = db.Column(db.String(128),nullable=True) 
+    looking_for = db.Column(db.String(128),nullable=True)
 
     password = db.Column(db.String(128),nullable=True)
+
     email = db.Column(db.String(128),nullable=True)
+
     gender = db.Column(db.String(128),nullable=True)
 
     has_changed_dob = db.Column(db.Boolean, default=False) #Users can only change their DOB once 
     
+
+    notifications = db.relationship('Notification', backref='author', cascade="all, delete-orphan")
+
+    """Created index on email and username for faster lookup"""
+    __table_args__ = (
+        db.Index('ix_user_email', 'email', unique=True),
+        db.Index('ix_user_username', 'username', unique=True),
+    )
+
     def __init__(self, first_name, last_name, username, dob, looking_for, password, email, gender):
         self.first_name = first_name
         self.last_name = last_name
@@ -97,6 +107,9 @@ class User(db.Model):
             return str(self.id)  # python 3 support
         
     def update_dob(self, new_dob):
+        """
+        Ensures Dob is only updated once 
+        """
         if self.has_changed_dob:
             raise ValueError("DOB can only be updated once. Please contact support.")
         
@@ -244,6 +257,11 @@ class Like(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
     is_match = db.Column(db.String(128))
     action = db.Column(db.String(128))
+
+    __table_args__ = (
+        # Creates a index for faster like retrival and ensures no duplicate likes 
+        db.Index('ix_unique_like_direction', 'liker_id', 'liked_id', unique=True),
+    )
     
     def __init__(self, liker_id, liked_id, is_match, action):
         self.liker_id = liker_id
@@ -264,11 +282,19 @@ class Match(db.Model):
     user1_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
     user2_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 
     matched_at = db.Column(db.DateTime, default=db.func.now())
+
+
+    __table_args__ = (
+        # Creates an index on matches users for faster match retrival 
+        db.Index('ix_match_user_pair', 'user1_id', 'user2_id'),
+    )
     
     def __init__(self, user1_id, user2_id):
         self.user1_id = user1_id
         self.user2_id = user2_id
         #find a way to ensure that no duplicates are entered.
+
+
         
     def get_match_id(self):
         try:
@@ -315,3 +341,13 @@ class SavedProfile(db.Model):
     # Ensure a user can't save the same person twice
     __table_args__ = (db.UniqueConstraint('saver_id', 'saved_id', name='_saver_saved_uc'),)
 
+
+class Notification(db.Model):
+
+    __tablename__ = 'notifications'
+
+    notif_id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.String(255), nullable=False)
+
+    # Linkage to the User Table 
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 

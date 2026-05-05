@@ -5,8 +5,6 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-
-
 import os
 from app import app
 from . import db 
