@@ -8,7 +8,8 @@ This file creates your application.
 import os
 from app import app
 from . import db 
-from app.models import User, Profile, Preference, Like, Match, Message, SavedProfile
+from app.models import User, Profile, Preference, Like, Match, Message, SavedProfile, Notification
+from flask_socketio import emit
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
 from flask_login import login_user, logout_user, verify_password, current_user, login_required
@@ -358,7 +359,7 @@ def display_matches():
     """
     Displays matched profiles to logged in users
     """
-    user_id = current_user.id
+    user_id = current_user.user_id
     
     #remove all profiles the user has already viewed
     interacted = db.session.query(Like.liked_id).filter(Like.liker_id == user_id).all()
@@ -399,7 +400,7 @@ def like_profile(id):
     profile_to_like = User.query.get_or_404(id)
     
     # Check if the user is trying to like themselves
-    if current_user.id == profile_to_like.id:
+    if current_user.user_id == profile_to_like.id:
         return jsonify({"error": "You cannot like your own profile"}), 400
 
     # remove like from database if user presses like again
@@ -419,12 +420,15 @@ def like_profile(id):
    
     # if the above cases are false, like the profile and add like record to database
     current_user.like(profile_to_like)
-    db.session.commit()
-    total_likes = profile_to_like.likes_received.count()
+    like_notification = Notification(user_id=profile_to_like.user_id, 
+                                     message=f"{current_user.profile.username} liked your profile!")
+    db.session.add(like_notification)
+    emit('new_notification', {'message': f"{current_user.profile.username} liked your profile!"}, 
+         room=str(profile_to_like.user_id), namespace='/')
     
     is_mutual = profile_to_like.has_liked(current_user)
     
-    #to be fixed
+
     if is_mutual:
         existing_match = Match.query.filter(
         or_(
@@ -435,17 +439,34 @@ def like_profile(id):
         
         if not existing_match:
             new_match = Match(user1_id=current_user.user_id, user2_id=profile_to_like.user_id)
+            db.session.add(new_match)
+            
             existing_like = Like.query.filter_by(liker_id=current_user.user_id, liked_id=profile_to_like.user_id, action='like').first()
             if existing_like:
                 existing_like.is_match = 'Yes'
-                db.session.commit()
-            
+
             existing_like_rev = Like.query.filter_by(liker_id=profile_to_like.user_id, liked_id=current_user.user_id, action='like').first()
             if existing_like_rev:
-                existing_like.is_match = 'Yes'
-                db.session.commit()
+                existing_like_rev.is_match = 'Yes'
+
+            # Notification to current user
+            match_notification_1 = Notification(user_id=current_user.user_id, 
+                                     message=f"You have matched with {profile_to_like.profile.username}!")
+            # Notification to liked_user
+            match_notification_2 = Notification(user_id=profile_to_like.user_id, 
+                                     message=f"You have matched with {current_user.profile.username}!")
             
-            db.session.add(new_match)
+            db.session.add_all([match_notification_1, match_notification_2])
+            
+            
+            # Notification to current user
+            emit('new_match', {'message': f"Match! You and {profile_to_like.profile.username} liked each other!"}, 
+                 room=str(current_user.user_id), namespace='/')
+            
+            # Notification to liked_user
+            emit('new_match', {'message': f"Match! You and {current_user.profile.username} liked each other!"}, 
+                 room=str(profile_to_like.user_id), namespace='/')
+
             db.session.commit()
             return jsonify({"message": f"You have matched with {profile_to_like.username}",
                             "match_id": new_match.match_id }), 201
@@ -464,7 +485,7 @@ def dislike_profile(id):
     profile_to_dislike = User.query.get_or_404(id)
     
     # Check if the user is trying to like themselves
-    if current_user.id == profile_to_dislike.id:
+    if current_user.user_id == profile_to_dislike.user_id:
         return jsonify({"error": "You cannot dislike your own profile"}), 400
 
     # Check if user already liked this profile
@@ -559,11 +580,40 @@ def send_message(match_id):
         receiver_id = match.user1_id
     else:
         return jsonify({"error": "You cannot message this user"}), 403
+    
     new_message = Message(match_id=match_id, sender_id=current_user.user_id, receiver_id=receiver_id, content=content)
     db.session.add(new_message)
+    
+    new_notif = Notification(user_id=receiver_id, 
+                            message=f"{current_user.profile.username} sent you a message.")
+    db.session.add(new_notif)
+    
+    emit('new_message', {'message': f"{current_user.profile.username} sent you a message."}, 
+                 room=str(receiver_id), namespace='/')
+    
     db.session.commit()
     return jsonify({"message": "Message sent!",
                     "message_id": new_message.message_id }), 201
+
+@app.route('/api/v1/notifications', methods=['GET'])
+@login_required
+def display_notifications():
+    """
+    Retrieves all notifications for the current user.
+    """
+    notifications = Notification.query.filter_by(user_id=current_user.user_id) \
+                                      .order_by(desc(Notification.timestamp)) \
+                                      .all()
+    notification_list = []
+    for notif in notifications:
+        notification_list.append({
+            'id': notif.id,
+            'message': notif.message,
+            'timestamp': notif.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        })
+          
+    return jsonify({"notifications": notification_list}), 200
+    
 
 def get_message_history(match_id):
     # return Message.query.filter_by(match_id=match_id).order_by(Message.timestamp.asc()).all()
@@ -650,28 +700,30 @@ def search_profiles():
         })
     return jsonify(profiles=formatted_results), 200
 
-@app.route('/api/v1/bookmarks', methods=['POST'])
-#@login_required
-def bookmark_profiles():
-    profile_id = request.json.get('profile_id')
+
+
+# @app.route('/api/v1/bookmarks', methods=['POST'])
+# #@login_required
+# def bookmark_profiles():
+#     profile_id = request.json.get('profile_id')
     
-    if not profile_id:
-        return jsonify(error="Profile ID is required"), 400
+#     if not profile_id:
+#         return jsonify(error="Profile ID is required"), 400
     
-    profile = Profile.query.get(profile_id)
-    if not profile:
-        return jsonify(error="Profile not found"), 404
+#     profile = Profile.query.get(profile_id)
+#     if not profile:
+#         return jsonify(error="Profile not found"), 404
     
-    existing_bookmark = Like.query.filter_by(liker_id=request.user_id, liked_id=profile_id, action='bookmark').first()
-    if existing_bookmark:
-        return jsonify(error="Profile already bookmarked"), 400
+#     existing_bookmark = Like.query.filter_by(liker_id=request.user_id, liked_id=profile_id, action='bookmark').first()
+#     if existing_bookmark:
+#         return jsonify(error="Profile already bookmarked"), 400
     
-    # Use of Like table with action='bookmark' inlcuded with 'like/dislike OR can use a separate Bookmark table
-    bookmark = Like.query.filter_by(liker_id=request.user_id, action='bookmark')
-    db.session.add(bookmark)
-    db.session.commit()
+#     # Use of Like table with action='bookmark' inlcuded with 'like/dislike OR can use a separate Bookmark table
+#     bookmark = Like.query.filter_by(liker_id=request.user_id, action='bookmark')
+#     db.session.add(bookmark)
+#     db.session.commit()
     
-    return jsonify(message="Profile bookmarked successfully"), 200
+#     return jsonify(message="Profile bookmarked successfully"), 200
         
 
 ###

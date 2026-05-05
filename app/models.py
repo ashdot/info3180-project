@@ -71,7 +71,7 @@ class User(db.Model):
         and match = False
     
         """
-        new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='False', action='dislike') 
+        new_like = Like(liker_id=self.user_id, liked_id=profile.user_id, is_match='No', action='dislike') 
         db.session.add(new_like)
         
     def remove_dislike(self, profile):
@@ -348,6 +348,7 @@ class Notification(db.Model):
 
     notif_id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now())
 
     # Linkage to the User Table 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
