@@ -5,6 +5,8 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
+
+
 import os
 from app import app
 from . import db 
@@ -21,6 +23,16 @@ from sqlalchemy import or_
 # Routing for your application.
 ###
 
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    """Serve static files."""
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_file(os.path.join(app.static_folder, path))
+    else:
+        return render_template('home.html')
+
 @app.route('/')
 def index():
     return jsonify(message="This is the beginning of our API")
@@ -28,12 +40,8 @@ def index():
 ###
 # User Authentification and Profile Management 
 ###
-
 @app.route('/api/v1/auth/login', methods=['POST']) 
 def login():
-    """
-    Allows user to login to Drift Dater. 
-    """
     data = request.get_json()
 
     #If email or password not valid, an error is thrown 
@@ -316,29 +324,32 @@ def set_preferences():
 # Matching Algorithm
 ###
 
-def calculate_match_score(user, candidate): #user is a dict put together in another function
+def calculate_match_score(user, profile): #user is a dict put together in another function
     """
     Calculates a match score based on 4 categories.
     Categories: Location, Age, Interests and Gender
     """
     score = 0
+    candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
+    user_pref = {'location': user.profile.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.profile.interests, 'gender': user.preferences.gender_pref}
+        
     # Weights for each category (optional, adds precision)
     weights = {'location': 0.5, 'age': 1.5, 'interests': 0.5, 'gender': 1.5} 
         
-    if candidate['location'] == user['location']:
+    if candidate['location'] == user_pref['location']:
         score += weights['location']
         
-    min_age = user['age'][0]
-    max_age = user['age'][1]
+    min_age = user_pref['age'][0]
+    max_age = user_pref['age'][1]
     if candidate['age'] >= min_age and candidate['age'] <= max_age: 
         score += weights['age'] 
 
     #Adds 0.5 to score for each matching interest.
     for i in candidate['interests']:
-        if i in user['interests']: 
+        if i in user_pref['interests']: 
             score += weights['interests']
             
-    if candidate['gender'] == user['gender'] or user['gender'] == 'Both':
+    if candidate['gender'] == user_pref['gender'] or user_pref['gender'] == 'Both':
         score += weights['gender']
         
     return score
@@ -357,14 +368,11 @@ def display_matches():
     
     profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
     
-    user= db.session.execute(db.select(Profile).filter_by(user_id=user_id)).scalar_one() 
+    user = db.session.execute(db.select(User).filter_by(user_id=user_id)).scalar_one() 
     
     scored_match_list = []
     for profile in profiles:
-        candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
-        user = {'location': user.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.interests, 'gender': user.preferences.gender_pref}
-        
-        score = calculate_match_score(user, candidate)
+        score = calculate_match_score(user, profile)
         photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url
 
         scored_match_list.append({
@@ -572,7 +580,101 @@ def get_photo(filename):
     return send_from_directory(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']), filename)  
         
 
+@app.route('/api/search', methods=['GET'])
+#@login_required
+def search_profiles():
+    # Query parameters for searching profiles
+    first_name = request.args.get('first_name', '').strip()
+    last_name = request.args.get('last_name', '').strip()
+    min_age = request.args.get('min_age', type=int)
+    max_age = request.args.get('max_age', type=int)
+    preference = request.args.get('preference', '').strip()
+    location = request.args.get('location', '').strip()
+    education = request.args.get('education', '').strip()
+    #religion = request.args.get('religion', '').strip()
+    interests = request.args.get('interests', '').strip()
+    
+    if not any([first_name, last_name,location, min_age, max_age, preference, education, interests ]): #religion, ]):
+        return jsonify(error="At least one search parameter is required"), 400
+    
+    query = db.session.query(Profile, User).join(User, Profile.user_id_fk == User.user_id)
+    
+    # Apply filters based on parameters: preference(sexuality), age range, location, education, religion
+    if first_name:
+        query = query.filter(User.first_name.ilike(f'%{first_name}%'))
+    if preference:
+        query = query.filter(Profile.preference.ilike(f'%{preference}%'))
+    if location:
+        query = query.filter(Profile.location.ilike(f'%{location}%'))
+    if education:
+        query = query.filter(Profile.education.ilike(f'%{education}%'))
+    if interests:
+        query = query.filter(Profile.interests.ilike(f'%{interests}%'))
+    #if religion:
+        #query = query.filter(Profile.religion.ilike(f'%{religion}%'))
+        
+    today = date.today()
+    
+    if min_age is not None:
+        max_birthdate = date(today.year - min_age, today.month, today.day)
+        query = query.filter(User.dob <= max_birthdate)
+    if max_age is not None:
+        min_birthdate = date(today.year - max_age, today.month, today.day)
+        query = query.filter(User.dob >= min_birthdate)
+    results = query.all()
 
+    # Sort options (newest, most similar, etc.)
+    sort_by = request.args.get('sort_by', 'newest')
+    if sort_by == 'newest':
+        #query = query.order_by(Profile.created_at.desc())
+        results.sort(key=lambda x: x[0].created_at, reverse=True)
+    elif sort_by == 'most_similar':
+        current_user_profile = User.query.filter_by(user_id=current_user.user_id).first() 
+        results.sort(key=lambda x: calculate_match_score(current_user_profile, x[0]), reverse=True)
+    
+    # Format results for JSON response
+    formatted_results = []
+    for profile, user in results:
+        formatted_results.append({
+            'user_id': user.user_id,
+            'username': user.username,
+            'first_name': user.first_name,
+            'age': age_range(profile.age),
+            'bio': profile.bio,
+            'photo': profile.photo_url,
+            'location': profile.location,
+            'gender': profile.gender,
+            'looking_for': profile.looking_for,
+            'interests': profile.interests,
+            'preference': profile.preference,
+            'education': profile.education,
+            #'religion': profile.religion,
+        })
+    return jsonify(profiles=formatted_results), 200
+
+@app.route('/api/v1/bookmarks', methods=['POST'])
+#@login_required
+def bookmark_profiles():
+    profile_id = request.json.get('profile_id')
+    
+    if not profile_id:
+        return jsonify(error="Profile ID is required"), 400
+    
+    profile = Profile.query.get(profile_id)
+    if not profile:
+        return jsonify(error="Profile not found"), 404
+    
+    existing_bookmark = Like.query.filter_by(liker_id=request.user_id, liked_id=profile_id, action='bookmark').first()
+    if existing_bookmark:
+        return jsonify(error="Profile already bookmarked"), 400
+    
+    # Use of Like table with action='bookmark' inlcuded with 'like/dislike OR can use a separate Bookmark table
+    bookmark = Like.query.filter_by(liker_id=request.user_id, action='bookmark')
+    db.session.add(bookmark)
+    db.session.commit()
+    
+    return jsonify(message="Profile bookmarked successfully"), 200
+        
 
 ###
 # The functions below should be applicable to all Flask apps.
