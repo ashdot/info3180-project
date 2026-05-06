@@ -58,10 +58,16 @@ $ pip install -r requirements.txt
 **Configure environment variables — create a .env file in the project root:**
 
 SECRET_KEY=your-secret-key-here  
-DATABASE_URL=postgresql://user:password@localhost/driftdater
+DATABASE_URL=postgresql://user:password@localhost/driftdater  
 UPLOAD_FOLDER=./uploads
 
-N.B - A Secret Key can be Created using -> Secret library in python 
+
+```bash
+$ python3 -c "import secrets; print(secrets.token_hex(32))"
+#N.B - A Secret Key can be Created using -> Secret library in python 
+```
+
+
 
 
 
