@@ -13,40 +13,105 @@ Ashle Johnson | Deployment Lead
 Alexia Barrows | Project Manager
 
 
-
 ## Recommended IDE Setup
 
 [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.vscode-typescript-vue-plugin).
 
-## Customize configuration
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+## Setup Instructions
 
-## Project Setup
+### Prerequisites
 
-```sh
-npm install
-```
+Ensure you have the following installed before running 
 
-### Compile and Hot-Reload for Development
+Python 3.10+
+Node.js 18+
+PostgreSQL (or SQLite for local development)
+Git
 
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-## Start Flask API
-
-Remember to always create a virtual environment and install the packages in your requirements file
+### Clone the Repository
 
 ```bash
-$ python -m venv venv (you may need to use python3 instead)
-$ source venv/bin/activate (or .\venv\Scripts\activate on Windows)
-$ pip install -r requirements.txt
-$ flask --app app --debug run
+$ git clone https://github.com/ashdot/info3180-project.git
+$ cd info3180-project
 ```
+
+### 2. Backend Setup (Flask)
+
+**Create and activate a virtual environment:**
+```bash
+# Create the environment
+$ python -m venv venv
+
+# Activate (Windows)
+$ .\venv\Scripts\activate
+
+# Activate (macOS/Linux)
+$ source venv/bin/activate
+```
+
+**Install Python dependencies:**
+```bash
+$ pip install -r requirements.txt
+```
+
+**Configure environment variables — create a .env file in the project root:**
+
+SECRET_KEY=your-secret-key-here  
+DATABASE_URL=postgresql://user:password@localhost/driftdater
+UPLOAD_FOLDER=./uploads
+
+N.B - A Secret Key can be Created using -> Secret library in python 
+
+
+
+**Run database migrations:**
+
+```bash
+$ flask db init 
+$ flask db migrate 
+$ flask db upgrade
+```
+
+**Start the Flask development server:**
+
+```bash
+$ flask --app app --debug run
+# Runs at http://localhost:5000
+```
+
+
+### 3. FrontEnd Setup (Vue/Vite)
+
+Open a new terminal and navigate to the frontend directory:
+
+```bash
+$ cd frontend
+
+#Install Node.js dependencies:
+
+$ npm install
+
+#Start the Vite development server:
+
+$ npm run dev
+# Runs at http://localhost:5173
+
+```
+
+## API Documentation 
+
+
+
+
+
+
+
+## Deployed Application Link 
+
+
+
+
+
+
+## Known Issues and Limitations 
