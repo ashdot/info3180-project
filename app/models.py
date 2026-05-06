@@ -63,7 +63,7 @@ class User(db.Model):
         liked_id=profile.user_id, 
         action='like').first()
         if like_record:
-            db.session.delete(dislike_record)
+            db.session.delete(like_record)
 
     def dislike(self, profile):
         """
@@ -330,9 +330,10 @@ class Message(db.Model):
         return f'<Message from {self.sender_id} to {self.receiver_id} at {self.timestamp}>'
     
     
-#d) Save favorite/bookmarked profiles -> class SavedProfiles(db.Model)
+
 class SavedProfile(db.Model):
     __tablename__ = 'saved_profiles'
+
     id = db.Column(db.Integer, primary_key=True)
     saver_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     saved_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
@@ -343,7 +344,6 @@ class SavedProfile(db.Model):
 
 
 class Notification(db.Model):
-
     __tablename__ = 'notifications'
 
     notif_id = db.Column(db.Integer, primary_key=True)
