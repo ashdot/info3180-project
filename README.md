@@ -101,7 +101,25 @@ $ npm run dev
 
 ## API Documentation 
 
-
+Endpoint | Method | Description | Auth Required | Response | 
+--- | --- | --- | --- | ---
+/api/v1/signup | POST | Register a new user and auto-create profile | No | 201 Created
+/api/v1/auth/login | POST | Login and create session | No | 200 + user data
+/api/v1/auth/logout | GET | Logout and clear session | Yes | 200 OK
+/api/v1/profile/all | GET | List all public profiles | Yes | 200 + profiles[]
+/api/v1/profile/<user_id> | GET | Get a specific user's profile | Yes | 200 + profile
+/api/v1/profile | GET | Display current user's own profile | Yes | 200 + profile
+/api/v1/profile/edit | PUT | Update own profile (with photo upload) | Yes | 200 OK
+/api/v1/profiles/<id>/save | POST | Toggle save/unsave a profile | Yes | 201 Created / 200 OK
+/api/v1/matches | GET | Get scored matches for current user | Yes | 200 + matches[]
+/api/v1/profiles/<id>/like | POST | Like a profile (handles mutual matches) | Yes | 201 + match status
+/api/v1/profiles/<id>/dislike | POST | Dislike a profile | Yes | 201 OK
+/api/v1/profiles/<id>/pass | POST | Pass on a profile (hide from future results) | Yes | 201 OK
+/api/v1/contacts/<user_id> | GET | List of mutual match contacts | Yes | 200 + contacts[]
+/api/v1/messages/<match_id> | GET | Get conversation history for a match | Yes | 200 + messages[]
+/api/v1/messages/<match_id> | POST | Send a message to a match | Yes | 201 + message
+/api/v1/notifications | GET | Get user notifications | Yes | 200 + notifications[]
+/api/search | GET | Search/filter profiles with sorting | No* | 200 + results[]
 
 
 
