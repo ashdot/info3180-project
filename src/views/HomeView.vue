@@ -61,7 +61,9 @@ let message = ref("Hello World! This is a VueJS and Flask Starter Template.")
     <section class="cta">
       <h2>Ready to Find Love?</h2>
       <p>Join DriftDater today and start your journey</p>
-      <button>Create Your Profile Now</button> <!--go back and add functionality-->
+      <button @click="$router.push('/signup')">
+        Create Your Profile Now
+      </button> 
     </section>
 
     <!--<AppFooter />-->

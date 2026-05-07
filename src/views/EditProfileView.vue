@@ -3,84 +3,89 @@
 
     <div class="card">
 
-      <!-- HEADER -->
-      <div class="header">
-
-        <div class="profile-photo-section" @click="triggerFile">
-
-          <input
-            type="file"
-            ref="fileInput"
-            hidden
-            accept="image/*"
-            @change="handleFile"
-          />
-
-          <div class="profile-photo">
-
-            <img
-              v-if="preview"
-              :src="preview"
-              alt="Profile"
-            />
-
-            <span v-else>Upload</span>
-
-          </div>
-
-          <p>Change Profile Photo</p>
-
-        </div>
-
-      </div>
-
       <h1>Edit Profile</h1>
 
       <p class="subtitle">
-        Update your personal information
+        Update your profile details
       </p>
 
-      <!-- FORM -->
-      <form @submit.prevent="saveProfile">
+      <!-- PHOTO -->
+      <div
+        class="photo-section"
+        @click="triggerFile"
+      >
 
-        <!-- NAME + AGE -->
-        <div class="row">
+        <input
+          type="file"
+          ref="fileInput"
+          hidden
+          accept="image/*"
+          @change="handleFile"
+        />
 
-          <div class="field">
-            <label>Full Name</label>
+        <div class="photo-circle">
 
-            <input
-              type="text"
-              v-model="name"
-              placeholder="John Doe"
-            />
-          </div>
+          <img
+            v-if="preview"
+            :src="preview"
+          />
 
-          <div class="field">
-            <label>Age</label>
-
-            <input
-              type="number"
-              v-model="age"
-              placeholder="25"
-            />
-          </div>
+          <span v-else>
+            Upload
+          </span>
 
         </div>
 
-        <!-- EMAIL -->
+        <p>Update Profile Photo</p>
+
+      </div>
+
+      <form @submit.prevent="saveProfile">
+
+        <!-- VISIBILITY -->
         <div class="field">
-          <label>Email</label>
+
+          <label>Visibility</label>
+
+          <select v-model="visibility">
+
+            <option>Public</option>
+            <option>Private</option>
+
+          </select>
+
+        </div>
+
+        <!-- PREFERENCE -->
+        <div class="field">
+
+          <label>Looking For</label>
+
+          <select v-model="preference">
+
+            <option>Man</option>
+            <option>Woman</option>
+            <option>Both</option>
+
+          </select>
+
+        </div>
+
+        <!-- EDUCATION -->
+        <div class="field">
+
+          <label>Education</label>
 
           <input
-            type="email"
-            v-model="email"
-            placeholder="john@email.com"
+            type="text"
+            v-model="education"
+            placeholder="University of the West Indies"
           />
         </div>
 
         <!-- LOCATION -->
         <div class="field">
+
           <label>Location</label>
 
           <input
@@ -92,74 +97,47 @@
 
         <!-- BIO -->
         <div class="field">
+
           <label>Bio</label>
 
           <textarea
             v-model="bio"
             placeholder="Tell people about yourself..."
           ></textarea>
+
         </div>
 
         <!-- INTERESTS -->
         <div class="field">
+
           <label>Interests</label>
 
-          <input
-            type="text"
-            v-model="interests"
-            placeholder="Music, Movies, Travel"
-          />
-        </div>
+          <div class="interests-grid">
 
-        <!-- GENDER + LOOKING FOR -->
-        <div class="row">
+            <label
+              v-for="interest in availableInterests"
+              :key="interest"
+              class="interest-item"
+            >
 
-          <div class="field">
-            <label>Gender</label>
+              <input
+                type="checkbox"
+                :value="interest"
+                v-model="interests"
+              />
 
-            <select v-model="gender">
-              <option>Male</option>
-              <option>Female</option>
-            </select>
-          </div>
+              {{ interest }}
 
-          <div class="field">
-            <label>Looking For</label>
+            </label>
 
-            <select v-model="lookingFor">
-              <option>Male</option>
-              <option>Female</option>
-            </select>
           </div>
 
         </div>
 
-        <!-- VISIBILITY -->
-        <div class="field">
-          <label>Profile Visibility</label>
-
-          <select v-model="visibility">
-            <option>Public</option>
-            <option>Private</option>
-          </select>
-        </div>
-
-        <!-- BUTTONS -->
-        <div class="button-group">
-
-          <button
-            type="button"
-            class="cancel-btn"
-            @click="$router.push('/profile')"
-          >
-            Cancel
-          </button>
-
-          <button class="save-btn">
-            Save Changes
-          </button>
-
-        </div>
+        <!-- BUTTON -->
+        <button class="btn">
+          Save Changes
+        </button>
 
       </form>
 
@@ -174,20 +152,37 @@ export default {
   data() {
     return {
 
-      name: "John Doe",
-      age: 25,
-      email: "john@example.com",
-      location: "Kingston, Jamaica",
-
-      bio: "Love music, food and travelling.",
-      interests: "Movies, Music, Sports",
-
-      gender: "Male",
-      lookingFor: "Female",
-
       visibility: "Public",
 
-      preview: null
+      preference: "Both",
+
+      education: "",
+
+      interests: [],
+
+      bio: "",
+
+      location: "",
+
+      preview: null,
+
+      availableInterests: [
+
+        'Tech',
+        'Music',
+        'Art',
+        'Sports',
+        'Cooking',
+        'Travel',
+        'Fitness',
+        'Gaming',
+        'Reading',
+        'Film',
+        'Photography',
+        'Fashion',
+        'Pets',
+        'Socializing'
+      ]
     };
   },
 
@@ -208,24 +203,26 @@ export default {
 
     saveProfile() {
 
-      const updatedUser = {
-        name: this.name,
-        age: this.age,
-        email: this.email,
-        location: this.location,
-        bio: this.bio,
-        interests: this.interests,
-        gender: this.gender,
-        lookingFor: this.lookingFor,
+      const profileData = {
+
         visibility: this.visibility,
+
+        preference: this.preference,
+
+        education: this.education,
+
+        interests: this.interests,
+
+        bio: this.bio,
+
+        location: this.location,
+
         profilePhoto: this.preview
       };
 
-      console.log(updatedUser);
+      console.log(profileData);
 
-      alert("Profile Updated Successfully!");
-
-      this.$router.push('/profile');
+      alert("Profile Updated!");
     }
   }
 };
@@ -235,69 +232,32 @@ export default {
 
 .page {
   min-height: 100vh;
+
   background: #f5f5f7;
+
   display: flex;
   justify-content: center;
   align-items: center;
+
   padding: 40px 20px;
 }
 
 .card {
   width: 100%;
   max-width: 650px;
+
   background: white;
+
   padding: 35px;
+
   border-radius: 20px;
+
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-}
-
-.header {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.profile-photo-section {
-  text-align: center;
-  cursor: pointer;
-}
-
-.profile-photo {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: #eee;
-  border: 4px solid #ffd6e0;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  overflow: hidden;
-
-  margin: auto;
-}
-
-.profile-photo span {
-  color: #888;
-  font-size: 14px;
-}
-
-.profile-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.profile-photo-section p {
-  margin-top: 10px;
-  color: #ff4d79;
-  font-weight: 600;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .subtitle {
@@ -306,102 +266,128 @@ h1 {
   margin-bottom: 25px;
 }
 
-.row {
+.photo-section {
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.photo-circle {
+  width: 110px;
+  height: 110px;
+
+  border-radius: 50%;
+
+  background: #eee;
+
+  border: 4px solid #ffd6e0;
+
+  margin: auto;
+
+  overflow: hidden;
+
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.photo-circle span {
+  color: gray;
+}
+
+.photo-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-section p {
+  margin-top: 10px;
+  color: #ff4d79;
+  font-weight: 600;
 }
 
 .field {
-  flex: 1;
-  margin-top: 15px;
+  margin-top: 18px;
 }
 
 .field label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #333;
 }
 
 input,
 select,
 textarea {
   width: 100%;
+
   padding: 12px;
+
   border-radius: 10px;
+
   border: 1px solid #ddd;
-  font-size: 14px;
+
   box-sizing: border-box;
-  transition: 0.2s ease;
 }
 
 textarea {
-  min-height: 110px;
+  min-height: 120px;
   resize: none;
-  font-family: inherit;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: #ff4d79;
-  box-shadow: 0 0 0 3px rgba(255, 77, 121, 0.1);
+.interests-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 10px;
+
+  margin-top: 10px;
 }
 
-.button-group {
+.interest-item {
   display: flex;
-  gap: 15px;
-  margin-top: 30px;
-}
+  align-items: center;
 
-.cancel-btn,
-.save-btn {
-  flex: 1;
-  padding: 14px;
+  gap: 8px;
+
+  background: #f8f8f8;
+
+  padding: 10px;
+
   border-radius: 10px;
-  border: none;
+
   cursor: pointer;
-  font-weight: bold;
-  font-size: 15px;
-  transition: 0.2s ease;
 }
 
-.cancel-btn {
-  background: #eee;
-  color: #333;
+.interest-item input {
+  width: auto;
 }
 
-.cancel-btn:hover {
-  background: #ddd;
-}
+.btn {
+  width: 100%;
 
-.save-btn {
+  margin-top: 30px;
+
+  padding: 14px;
+
+  border: none;
+  border-radius: 10px;
+
   background: linear-gradient(135deg, #ff4d79, #ff6a5c);
+
   color: white;
+
+  font-weight: bold;
+
+  cursor: pointer;
 }
 
-.save-btn:hover {
-  transform: translateY(-2px);
-  opacity: 0.95;
-}
-
-/* MOBILE */
 @media (max-width: 700px) {
 
-  .row {
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .button-group {
-    flex-direction: column;
-  }
-
-  .card {
-    padding: 25px;
+  .interests-grid {
+    grid-template-columns: 1fr;
   }
 }
-
 </style>

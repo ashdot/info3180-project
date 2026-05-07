@@ -1,127 +1,118 @@
 <template>
   <div class="page">
+
     <div class="card">
 
-      <!-- LOGO -->
       <div class="logo">
         <img src="@/assets/logo.png" alt="DriftDater Logo" />
       </div>
 
-      <h1>Create Your Profile</h1>
+      <h1>Create Account</h1>
+
       <p class="subtitle">
-        Join thousands of singles looking for love
+        Join DriftDater today
       </p>
 
-      <!-- PROFILE PHOTO -->
-      <div class="upload-box" @click="triggerFile">
-        <input
-          type="file"
-          ref="fileInput"
-          hidden
-          accept="image/*"
-          @change="handleFile"
-        />
-
-        <div class="upload-circle">
-          <img v-if="preview" :src="preview" />
-          <span v-else>Upload</span>
-        </div>
-
-        <p class="upload-text">Upload Profile Photo</p>
-      </div>
-
-      <!-- FORM -->
       <form @submit.prevent="handleSignup">
 
-        <!-- NAME + AGE -->
+        <!-- FIRST + LAST -->
         <div class="row">
 
           <div class="field">
-            <label>Full Name *</label>
+            <label>First Name *</label>
+
             <input
               type="text"
-              placeholder="John Doe"
-              v-model="name"
+              placeholder="John"
+              v-model="first_name"
             />
           </div>
 
           <div class="field">
-            <label>Age *</label>
+            <label>Last Name *</label>
+
             <input
-              type="number"
-              placeholder="25"
-              v-model="age"
+              type="text"
+              placeholder="Doe"
+              v-model="last_name"
             />
           </div>
 
+        </div>
+
+        <!-- USERNAME -->
+        <div class="field">
+
+          <label>Username *</label>
+
+          <input
+            type="text"
+            placeholder="johndoe"
+            v-model="username"
+          />
         </div>
 
         <!-- EMAIL -->
         <div class="field">
+
           <label>Email *</label>
+
           <input
             type="email"
-            placeholder="you@example.com"
+            placeholder="john@email.com"
             v-model="email"
           />
         </div>
 
-        <!-- LOCATION -->
+        <!-- DOB -->
         <div class="field">
-          <label>Location *</label>
+
+          <label>Date of Birth *</label>
+
           <input
-            type="text"
-            placeholder="Kingston, Jamaica"
-            v-model="location"
+            type="date"
+            v-model="dob"
           />
         </div>
 
-        <!-- BIO -->
-        <div class="field">
-          <label>Bio</label>
-          <textarea
-            placeholder="Tell others about yourself..."
-            v-model="bio"
-          ></textarea>
-        </div>
-
-        <!-- INTERESTS -->
-        <div class="field">
-          <label>Interests</label>
-          <input
-            type="text"
-            placeholder="Music, Movies, Travel"
-            v-model="interests"
-          />
-        </div>
-
-        <!-- VISIBILITY -->
-        <div class="field">
-          <label>Profile Visibility</label>
-          <select v-model="visibility">
-            <option>Public</option>
-            <option>Private</option>
-          </select>
-        </div>
-
-        <!-- GENDER -->
+        <!-- GENDER + LOOKING FOR -->
         <div class="row">
 
           <div class="field">
+
             <label>Gender *</label>
+
             <select v-model="gender">
-              <option disabled value="">Select gender</option>
-              <option>Male</option>
-              <option>Female</option>
+
+              <option value="man">Man</option>
+              <option value="woman">Woman</option>
+              <option value="other">Other</option>
+
             </select>
           </div>
 
           <div class="field">
+
             <label>Looking For *</label>
-            <select v-model="lookingFor">
-              <option disabled value="">Select preference</option>
-              <option>Male</option>
-              <option>Female</option>
+
+            <select v-model="looking_for">
+
+              <option value="long_term">
+                Long-term Relationship
+              </option>
+
+              <option value="casual">
+                Casual / Hookups
+              </option>
+
+              <option value="friendship">
+                Friendship / Companionship
+              </option>
+
+              <option value="flow">
+                Going with the Flow
+              </option>
+
             </select>
           </div>
 
@@ -131,9 +122,11 @@
         <div class="row">
 
           <div class="field">
+
             <label>Password *</label>
 
             <div class="input-box">
+
               <input
                 :type="showPassword ? 'text' : 'password'"
                 placeholder="Enter password"
@@ -147,13 +140,17 @@
               >
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
+
             </div>
+
           </div>
 
           <div class="field">
+
             <label>Confirm Password *</label>
 
             <div class="input-box">
+
               <input
                 :type="showConfirm ? 'text' : 'password'"
                 placeholder="Confirm password"
@@ -167,7 +164,9 @@
               >
                 {{ showConfirm ? 'Hide' : 'Show' }}
               </button>
+
             </div>
+
           </div>
 
         </div>
@@ -196,7 +195,6 @@
 
       </form>
 
-      <!-- LOGIN -->
       <p class="bottom">
         Already have an account?
 
@@ -206,32 +204,31 @@
       </p>
 
     </div>
+
   </div>
 </template>
 
 <script>
 export default {
+
   data() {
     return {
 
-      name: "",
-      age: "",
       email: "",
-      location: "",
+      username: "",
 
-      bio: "",
-      interests: "",
-      visibility: "Public",
+      first_name: "",
+      last_name: "",
 
-      gender: "",
-      lookingFor: "",
+      dob: "",
+
+      gender: "man",
+      looking_for: "long_term",
 
       password: "",
       confirmPassword: "",
 
       agree: false,
-
-      preview: null,
 
       showPassword: false,
       showConfirm: false
@@ -240,30 +237,15 @@ export default {
 
   methods: {
 
-    triggerFile() {
-      this.$refs.fileInput.click();
-    },
-
-    handleFile(e) {
-
-      const file = e.target.files[0];
-
-      if (file) {
-        this.preview = URL.createObjectURL(file);
-      }
-    },
-
     handleSignup() {
 
       if (
-        !this.name ||
-        !this.age ||
+        !this.first_name ||
+        !this.last_name ||
+        !this.username ||
         !this.email ||
-        !this.location ||
-        !this.gender ||
-        !this.lookingFor ||
-        !this.password ||
-        !this.confirmPassword
+        !this.dob ||
+        !this.password
       ) {
         alert("Please fill in all required fields");
         return;
@@ -279,24 +261,27 @@ export default {
         return;
       }
 
-      const userData = {
-        name: this.name,
-        age: this.age,
+      const signupData = {
+
         email: this.email,
-        location: this.location,
-        bio: this.bio,
-        interests: this.interests,
-        visibility: this.visibility,
+        username: this.username,
+
+        first_name: this.first_name,
+        last_name: this.last_name,
+
+        dob: this.dob,
+
         gender: this.gender,
-        lookingFor: this.lookingFor,
-        profilePhoto: this.preview
+        looking_for: this.looking_for,
+
+        password: this.password
       };
 
-      console.log(userData);
+      console.log(signupData);
 
-      alert("Account Created Successfully!");
+      alert("Account Created!");
 
-      this.$router.push("/login");
+      this.$router.push('/login');
     }
   }
 };
@@ -305,26 +290,32 @@ export default {
 <style scoped>
 
 .page {
+  min-height: 100vh;
+  background: #f5f5f7;
+
   display: flex;
   justify-content: center;
   align-items: center;
+
   padding: 40px 20px;
-  min-height: 100vh;
-  background: #f5f5f7;
 }
 
 .card {
   width: 100%;
   max-width: 600px;
+
   background: white;
+
   padding: 35px;
-  border-radius: 18px;
+
+  border-radius: 20px;
+
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  text-align: center;
 }
 
 .logo {
-  margin-bottom: 10px;
+  text-align: center;
+  margin-bottom: 15px;
 }
 
 .logo img {
@@ -334,48 +325,14 @@ export default {
 }
 
 h1 {
-  margin-bottom: 8px;
-  color: #222;
+  text-align: center;
+  margin-bottom: 10px;
 }
 
 .subtitle {
+  text-align: center;
   color: gray;
   margin-bottom: 25px;
-}
-
-.upload-box {
-  cursor: pointer;
-  margin-bottom: 20px;
-}
-
-.upload-circle {
-  width: 95px;
-  height: 95px;
-  border-radius: 50%;
-  background: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  overflow: hidden;
-  border: 3px solid #ffd6e0;
-}
-
-.upload-circle span {
-  color: #999;
-  font-size: 14px;
-}
-
-.upload-circle img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.upload-text {
-  margin-top: 10px;
-  color: #ff4d79;
-  font-weight: 500;
 }
 
 .row {
@@ -386,7 +343,6 @@ h1 {
 
 .field {
   flex: 1;
-  text-align: left;
   margin-top: 15px;
 }
 
@@ -394,47 +350,19 @@ h1 {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #333;
 }
 
 input,
-select,
-textarea {
+select {
   width: 100%;
   padding: 12px;
+
   border-radius: 10px;
   border: 1px solid #ddd;
-  font-size: 14px;
-  transition: 0.2s ease;
+
   box-sizing: border-box;
 }
 
-textarea {
-  min-height: 100px;
-  resize: none;
-  font-family: inherit;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: #ff4d79;
-  box-shadow: 0 0 0 3px rgba(255, 77, 121, 0.1);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #aaa;
-}
-
-/* REMOVE EDGE PASSWORD ICON */
-input[type="password"]::-ms-reveal,
-input[type="password"]::-ms-clear {
-  display: none;
-}
-
-/* PASSWORD INPUT */
 .input-box {
   position: relative;
 }
@@ -445,85 +373,75 @@ input[type="password"]::-ms-clear {
 
 .toggle {
   position: absolute;
+
   right: 10px;
-  top: 11px;
-  background: none;
+  top: 10px;
+
   border: none;
+  background: none;
+
   color: #ff4d79;
+
   cursor: pointer;
-  font-size: 13px;
   font-weight: 600;
 }
 
-/* TERMS */
 .terms {
   display: flex;
-  align-items: flex-start;
   gap: 10px;
+
   margin-top: 20px;
-  text-align: left;
 }
 
 .terms input {
   width: auto;
-  margin-top: 4px;
 }
 
 .terms p {
   margin: 0;
   font-size: 14px;
-  color: #555;
-  line-height: 1.5;
 }
 
 .terms span {
   color: #ff4d79;
   font-weight: 600;
-  cursor: pointer;
 }
 
-/* BUTTON */
 .btn {
   width: 100%;
+
   margin-top: 25px;
+
   padding: 14px;
+
   border: none;
   border-radius: 10px;
+
   background: linear-gradient(135deg, #ff4d79, #ff6a5c);
+
   color: white;
-  font-size: 15px;
+
   font-weight: bold;
+
   cursor: pointer;
-  transition: 0.2s ease;
 }
 
-.btn:hover {
-  transform: translateY(-2px);
-  opacity: 0.95;
-}
-
-/* LOGIN */
 .bottom {
+  text-align: center;
   margin-top: 20px;
-  color: #666;
 }
 
 .bottom span {
   color: #ff4d79;
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
 }
 
-/* MOBILE */
 @media (max-width: 700px) {
 
   .row {
     flex-direction: column;
     gap: 0;
-  }
-
-  .card {
-    padding: 25px;
   }
 }
 </style>
