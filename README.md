@@ -29,7 +29,7 @@ Node.js 18+
 PostgreSQL (or SQLite for local development)
 Git
 
-### 1. Clone the Repository
+### Clone the Repository
 
 ```bash
 $ git clone https://github.com/ashdot/info3180-project.git
