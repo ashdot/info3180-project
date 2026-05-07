@@ -1,104 +1,8 @@
-<script setup>
-import { ref } from 'vue'
-
-const first_name = ref('')
-const location = ref('')
-const age = ref(25)
-
-const sort_by = ref('newest')
-
-const showFilters = ref(false)
-
-const selectedInterests = ref([])
-
-const profiles = ref([])
-
-/* SEARCH */
-const searchProfiles = async () => {
-
-  try {
-
-    const params = new URLSearchParams({
-      first_name: first_name.value,
-      location: location.value,
-      age: age.value,
-      interests: selectedInterests.value.join(','),
-      sort_by: sort_by.value
-    })
-
-    const response = await fetch(
-      `http://127.0.0.1:5000/api/search?${params.toString()}`
-    )
-
-    const data = await response.json()
-
-    profiles.value = data.profiles || []
-
-    showFilters.value = false
-
-  } catch (error) {
-
-    console.log(error)
-
-  }
-}
-
-/* INTEREST TOGGLE */
-const toggleInterest = (interest) => {
-
-  if(selectedInterests.value.includes(interest)){
-
-    selectedInterests.value =
-      selectedInterests.value.filter(
-        item => item !== interest
-      )
-
-  } else {
-
-    selectedInterests.value.push(interest)
-
-  }
-}
-
-/* CLEAR */
-const clearFilters = () => {
-
-  location.value = ''
-
-  age.value = 25
-
-  selectedInterests.value = []
-
-}
-
-/* SAVE */
-const saveProfile = async (user_id) => {
-
-  try {
-
-    const response = await fetch(
-      `http://127.0.0.1:5000/api/v1/profiles/${user_id}/save`,
-      {
-        method: 'POST',
-        credentials: 'include'
-      }
-    )
-
-    const data = await response.json()
-
-    alert(data.message)
-
-  } catch (error) {
-
-    console.log(error)
-
-  }
-}
-</script>
-
 <template>
 
   <div class="search-page">
+
+    <Sidebar />
 
     <div class="search-container">
 
@@ -351,6 +255,106 @@ const saveProfile = async (user_id) => {
   </div>
 
 </template>
+
+<script setup>
+import { ref } from 'vue'
+
+import Sidebar from '@/components/Sidebar.vue'
+
+const first_name = ref('')
+const location = ref('')
+const age = ref(25)
+
+const sort_by = ref('newest')
+
+const showFilters = ref(false)
+
+const selectedInterests = ref([])
+
+const profiles = ref([])
+
+/* SEARCH */
+const searchProfiles = async () => {
+
+  try {
+
+    const params = new URLSearchParams({
+      first_name: first_name.value,
+      location: location.value,
+      age: age.value,
+      interests: selectedInterests.value.join(','),
+      sort_by: sort_by.value
+    })
+
+    const response = await fetch(
+      `http://127.0.0.1:5000/api/search?${params.toString()}`
+    )
+
+    const data = await response.json()
+
+    profiles.value = data.profiles || []
+
+    showFilters.value = false
+
+  } catch (error) {
+
+    console.log(error)
+
+  }
+}
+
+/* INTEREST TOGGLE */
+const toggleInterest = (interest) => {
+
+  if(selectedInterests.value.includes(interest)){
+
+    selectedInterests.value =
+      selectedInterests.value.filter(
+        item => item !== interest
+      )
+
+  } else {
+
+    selectedInterests.value.push(interest)
+
+  }
+}
+
+/* CLEAR */
+const clearFilters = () => {
+
+  location.value = ''
+
+  age.value = 25
+
+  selectedInterests.value = []
+
+}
+
+/* SAVE */
+const saveProfile = async (user_id) => {
+
+  try {
+
+    const response = await fetch(
+      `http://127.0.0.1:5000/api/v1/profiles/${user_id}/save`,
+      {
+        method: 'POST',
+        credentials: 'include'
+      }
+    )
+
+    const data = await response.json()
+
+    alert(data.message)
+
+  } catch (error) {
+
+    console.log(error)
+
+  }
+}
+</script>
 
 <style scoped>
 

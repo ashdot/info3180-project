@@ -1,6 +1,8 @@
 <template>
   <div class="page">
 
+    <Sidebar />
+  
     <div class="card">
 
       <h1>Edit Profile</h1>
@@ -147,6 +149,8 @@
 </template>
 
 <script>
+import Sidebar from '@/components/Sidebar.vue'
+
 export default {
 
   data() {
@@ -245,6 +249,9 @@ export default {
 .card {
   width: 100%;
   max-width: 650px;
+
+  position: relative;
+  z-index: 1;
 
   background: white;
 

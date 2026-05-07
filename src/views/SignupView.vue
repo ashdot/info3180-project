@@ -189,8 +189,9 @@
         </div>
 
         <!-- BUTTON -->
+        <!--make this redirect to into the actual app-->
         <button class="btn">
-          Create Account
+          Create Account 
         </button>
 
       </form>
@@ -281,7 +282,7 @@ export default {
 
       alert("Account Created!");
 
-      this.$router.push('/login');
+      this.$router.push({ name: 'search' });
     }
   }
 };

@@ -1,17 +1,19 @@
 <template>
-  <header class="header">
+  <!--also this should only show if the userr isnt logged in-->
+  <header v-if="showHeader" class="header">
 
-    <div class="logo">
+    <!--make this navigate to home when clicked-->
+    <RouterLink to="/" class="logo">
       <img src="@/assets/logo.png" alt="DriftDater Logo" />
       <span class="logo-text">DriftDater</span>
-    </div>
+    </RouterLink>
 
     <div class="buttons">
       <!-- SIGNUP -->
       <RouterLink 
         to="/signup" 
         class="nav-btn-filled"
-        :class="{ active: $route.path === '/signup' }"
+        :class="{ active: route.path === '/signup' }"
       >
         Sign Up
       </RouterLink>
@@ -20,7 +22,7 @@
       <RouterLink 
         to="/login" 
         class="nav-btn-outline"
-        :class="{ active: $route.path === '/login' }"
+        :class="{ active: route.path === '/login' }"
       >
         Login
       </RouterLink>
@@ -29,7 +31,23 @@
 </template>
 
 <script setup>
-import { RouterLink } from "vue-router";
+//import { RouterLink } from "vue-router";
+
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem("token");
+});
+
+const allowedRoutes = ["/", "/login", "/signup"];
+
+const showHeader = computed(() => {
+  return !isLoggedIn.value && allowedRoutes.includes(route.path);
+});
+
 </script>
 
 <style scoped>
@@ -52,6 +70,8 @@ import { RouterLink } from "vue-router";
   display: flex;
   align-items: center;
   gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .logo img {
