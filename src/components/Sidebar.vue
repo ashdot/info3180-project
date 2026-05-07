@@ -3,30 +3,30 @@
         <i 
             class="fi fi-br-menu-burger"
             :class="{ open: isOpen }"
-    ></i>
+        ></i>
     </button>
-    <!--aside v-if="isAuthenticated" class="sidebar"-->
+
     <aside :class="['sidebar', { collapsed: !isOpen }]">
-        <!-- Menu -->
+
+        <!-- MENU -->
         <div>
-            <!--Menu Header-->
+
+            <!-- HEADER -->
             <div class="menu-header">
-                <!--<i class="fi fi-br-menu-burger hamburger" @click="toggleSidebar"></i>-->
                 <h3>Menu</h3>
             </div>
-  
-            <!-- Discover -->
-            <!--double check the path for this-->
+
+            <!-- DISCOVER -->
             <router-link
-                to="/search"  
+                to="/search"
                 class="nav-item"
                 :class="{ active: route.path === '/search' }"
             >
                 <i class="fi fi-br-search"></i>
                 <span>Discover</span>
             </router-link>
-  
-            <!-- Favorites -->
+
+            <!-- FAVOURITES -->
             <router-link
                 to="/favourites"
                 class="nav-item"
@@ -35,18 +35,18 @@
                 <i class="fi fi-br-bookmark"></i>
                 <span>Favourites</span>
             </router-link>
-  
-            <!-- Matches -->
+
+            <!-- MATCHES -->
             <router-link
                 to="/matches"
                 class="nav-item"
                 :class="{ active: route.path === '/matches' }"
             >
                 <i class="fi fi-br-heart"></i>
-        
+
                 <div class="nav-content">
                     <span>Matches</span>
-        
+
                     <div
                         v-if="matchNotifications > 0"
                         class="notif-badge"
@@ -55,18 +55,18 @@
                     </div>
                 </div>
             </router-link>
-  
-            <!-- Messages -->
+
+            <!-- MESSAGES -->
             <router-link
                 to="/messages"
                 class="nav-item"
                 :class="{ active: route.path === '/messages' }"
             >
                 <i class="fi fi-br-messages"></i>
-        
+
                 <div class="nav-content">
                     <span>Messages</span>
-        
+
                     <div
                         v-if="messageNotifications > 0"
                         class="notif-badge"
@@ -75,8 +75,8 @@
                     </div>
                 </div>
             </router-link>
-  
-            <!-- Profile -->
+
+            <!-- PROFILE -->
             <router-link
                 to="/edit-profile"
                 class="nav-item"
@@ -86,16 +86,16 @@
                 <span>Profile</span>
             </router-link>
         </div>
-  
-        <!-- Logout -->
-        <!--fix this to actually allow them to logout-->
+
+        <!-- LOGOUT -->
         <button class="logout-btn" @click="logout">
             <i class="fi fi-br-sign-out-alt"></i>
             <span>Logout</span>
         </button>
+
     </aside>
 </template>
-  
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -108,10 +108,10 @@ const router = useRouter()
 
 // AUTH
 const isAuthenticated = computed(() => {
-  return !!localStorage.getItem('token')
+    return !!localStorage.getItem('token')
 })
 
-//SIDEBAR
+// SIDEBAR
 const isOpen = ref(false)
 
 const toggleSidebar = () => {
@@ -141,16 +141,16 @@ const loadNotifications = async () => {
         messageNotifications.value =
             notifications.filter(n =>
                 n.message.toLowerCase().includes('message')
-        ).length
+            ).length
 
         matchNotifications.value =
             notifications.filter(n =>
                 n.message.toLowerCase().includes('match')
-        ).length
+            ).length
 
     } catch (error) {
         console.error(error)
-  }
+    }
 }
 
 // SOCKET LISTENERS
@@ -182,16 +182,16 @@ const logout = async () => {
         localStorage.removeItem('token')
         localStorage.removeItem('user_id')
 
-        router.push('/login')
+        router.push('/')
 
     } catch (error) {
         console.error(error)
     }
 }
 </script>
-  
+
 <style scoped>
-  
+
 .sidebar {
     position: fixed;
     top: 0;
@@ -224,6 +224,7 @@ const logout = async () => {
     position: fixed;
     top: 40px;
     left: 20px;
+
     z-index: 1001;
 
     margin-top: 15px;
@@ -234,19 +235,20 @@ const logout = async () => {
 
     border: none;
     border-radius: 10px;
-    
+
     cursor: pointer;
 
     display: flex;
     align-items: center;
     justify-content: center;
+
     background: transparent;
 }
- 
+
 .sidebar.collapsed {
     transform: translateX(-100%);
 }
- 
+
 .sidebar-toggle i {
     font-size: 20px;
     color: black;
@@ -255,77 +257,90 @@ const logout = async () => {
 
 .sidebar-toggle i.open {
     color: white;
-} 
-
+}
 
 .menu-header {
     display: flex;
     align-items: center;
     gap: 12px;
-  
+
     color: white;
+
     margin-top: 30px;
     margin-bottom: 30px;
+
     padding-left: 50px;
 }
-  
-  
+
 .nav-item {
     display: flex;
     align-items: center;
     gap: 12px;
-  
+
     color: white;
     text-decoration: none;
-  
+
     padding: 12px 15px;
     border-radius: 14px;
-  
+
     margin-bottom: 10px;
-  
+
     transition: 0.2s ease;
 }
-  
+
 .nav-item:hover {
     background: rgba(255,255,255,0.15);
 }
 
 .nav-item.active {
-  background: white;
-  color: #111;
+    background: white;
+    color: #111;
 }
-  
+
 .nav-content {
     display: flex;
     align-items: center;
     gap: 10px;
 }
-  
-.notif {
+
+.notif-badge {
     background: white;
     color: #ff4d4d;
-  
+
     min-width: 20px;
     height: 20px;
-  
+
     border-radius: 50%;
-  
+
     display: flex;
     align-items: center;
     justify-content: center;
-  
+
     font-size: 12px;
     font-weight: bold;
 }
-  
+
 .logout-btn {
     border: none;
     background: transparent;
-  
+
     color: white;
     font-size: 16px;
-  
+
     text-align: left;
     cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 12px 15px;
+    border-radius: 14px;
+
+    transition: 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(255,255,255,0.15);
 }
 </style>
