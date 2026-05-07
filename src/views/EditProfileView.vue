@@ -5,7 +5,7 @@
   
     <div class="card">
 
-      <h1>Edit Profile</h1>
+      <h2>Edit Profile</h2>
 
       <p class="subtitle">
         Update your profile details
@@ -149,9 +149,13 @@
 </template>
 
 <script>
+
 import Sidebar from '@/components/Sidebar.vue'
 
 export default {
+  components: {
+    Sidebar
+  },
 
   data() {
     return {
@@ -262,7 +266,7 @@ export default {
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
-h1 {
+h2 {
   text-align: center;
   margin-bottom: 10px;
 }

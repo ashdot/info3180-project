@@ -6,35 +6,12 @@
         <main class="page-content">
   
             <div class="heading">
-                <h2>Matches</h2>
+                <h2>Saved Profiles</h2>
             </div>
   
-            <div class="filters">
   
-                <button
-                    :class="{ active: filter === 'all' }"
-                    @click="filter = 'all'"
-                >
-                    All
-                </button>
-  
-                <button
-                    :class="{ active: filter === 'newest' }"
-                    @click="filter = 'newest'"
-                >
-                    Newest
-                </button>
-  
-                <button
-                    :class="{ active: filter === 'mutual' }"
-                    @click="filter = 'mutual'"
-                >
-                    Mutual
-                </button>
-  
-            </div>
-  
-            <div class="match-grid">
+            <div class="favourites-grid">
+                <!--edit this
                 <div
                     v-for="match in filteredMatches"
                     :key="match.id"
@@ -57,12 +34,12 @@
                                 {{ match.first_name }}
                             </h2>
                             
-                            <!--<div class="location-row">
+                            <div class="location-row">
 
-                            </div>-->
+                            </div>
                         </div>
                     </div>
-                </div>   
+                </div>  --> 
             </div>
         </main>
     </div>
@@ -74,35 +51,6 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import Sidebar from '@/components/Sidebar.vue'
 
-const matches = ref([])
-const filter = ref('all')
-
-onMounted(async () => {
-    try {
-
-        const response = await api.get('/matches')
-
-        matches.value = response.data.matches
-
-    } catch (error) {
-        console.error(error)
-    }
-})
-
-const filteredMatches = computed(() => {
-
-    if (filter.value === 'newest') {
-        return [...matches.value].reverse()
-    }
-
-    /*
-    if (filter.value === 'mutual') {
-        return matches.value.filter(
-            match => match.score >= 3
-        )
-    }*/
-    return matches.value
-})
 </script>
   
 <style scoped>
@@ -124,46 +72,14 @@ const filteredMatches = computed(() => {
     margin: 0 auto;
 }
 
-.heading,
-.filters {
+.heading {
     display: flex;
     justify-content: center;
-}
-
-.heading {
     margin-top: 20px;
     margin-bottom: 10px;
 }
   
-.filters {
-    display: flex;
-    gap: 14px;
-  
-    margin-bottom: 40px;
-}
-  
-.filters button {
-    border: none;
-    background: #ececec;
-  
-    padding: 12px 22px;
-    border-radius: 999px;
-  
-    cursor: pointer;
-    font-weight: 600;
-}
-  
-.filters button.active {
-    background: linear-gradient(
-      to right,
-      #ff4d4d,
-      #ff7a45
-    );
-  
-    color: white;
-}
-  
-.match-grid {
+.favourites-grid {
     display: grid;
   
     grid-template-columns:
@@ -171,7 +87,8 @@ const filteredMatches = computed(() => {
   
     gap: 28px;
 }
-  
+ 
+/*
 .match-card {
     position: relative;
   

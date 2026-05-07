@@ -7,7 +7,7 @@
             
             <div class="heading">
                 <h2>Messages</h2>
-                <i class="fi fi-br-search"></i>
+                <!--<i class="fi fi-br-search"></i>-->
             </div>
 
             <div
@@ -75,20 +75,12 @@ onMounted(async () => {
 
 .heading {
     display: flex;
-    justify-content: center;
-}
-
-.heading {
-    display: flex;
     align-items: center;
-    justify-content: space-between;
-
+    justify-content: center; 
+    margin-top: 20px;
     margin-bottom: 40px;
 }
 
-.heading h1 {
-    font-size: 42px;
-}
 
 .conversation {
     display: flex;
