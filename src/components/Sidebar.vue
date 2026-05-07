@@ -28,12 +28,12 @@
   
             <!-- Favorites -->
             <router-link
-                to="/favorites"
+                to="/favourites"
                 class="nav-item"
-                :class="{ active: route.path === '/favorites' }"
+                :class="{ active: route.path === '/favourites' }"
             >
                 <i class="fi fi-br-bookmark"></i>
-                <span>Favorites</span>
+                <span>Favourites</span>
             </router-link>
   
             <!-- Matches -->

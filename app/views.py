@@ -12,6 +12,10 @@ from app.models import User, Profile, Preference, Like, Match, Message, SavedPro
 from flask_socketio import emit
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
+<<<<<<< HEAD
+=======
+#from flask_login import login_user, logout_user, verify_password, current_user, login_required
+>>>>>>> bdc24b5 (Added favourites page)
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash

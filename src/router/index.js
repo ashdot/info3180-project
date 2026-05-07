@@ -38,15 +38,15 @@ const router = createRouter({
     },
 
     {
-      path: '/edit-profile',
-      name: 'edit-profile',
-      component: EditProfileView
-    },
-
-    {
       path: '/search',
       name: 'search',
       component: SearchView
+    },
+
+    {
+      path: '/favourites',
+      name: 'favourites',
+      component: FavouritesView
     },
 
     {
@@ -60,6 +60,12 @@ const router = createRouter({
       name: 'messages',
       component: MessagesView
     },
+
+    {
+      path: '/edit-profile',
+      name: 'edit-profile',
+      component: EditProfileView
+    }
 
     /*
     {
