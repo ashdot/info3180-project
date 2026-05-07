@@ -15,7 +15,7 @@ class User(db.Model):
 
     looking_for = db.Column(db.String(128),nullable=True)
 
-    password = db.Column(db.String(128),nullable=True)
+    password_hash = db.Column(db.String(128),nullable=True)
 
     email = db.Column(db.String(128),nullable=True)
 
@@ -38,7 +38,7 @@ class User(db.Model):
         self.username = username
         self.dob = dob
         self.looking_for = looking_for
-        self.password = generate_password_hash(password, method='pbkdf2:sha256')
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
         self.email = email
         self.gender = gender
         
@@ -101,10 +101,7 @@ class User(db.Model):
         return False
 
     def get_id(self):
-        try:
-            return unicode(self.user_id)  # python 2 support
-        except NameError:
-            return str(self.id)  # python 3 support
+            return str(self.user_id)  # python 3 support
         
     def update_dob(self, new_dob):
         """

@@ -8,16 +8,19 @@ This file creates your application.
 import os
 from app import app
 from . import db 
+from . import login_manager
+
 from app.models import User, Profile, Preference, Like, Match, Message, SavedProfile, Notification
 from flask_socketio import emit
-from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
+from .forms import LoginForm, SignUpForm, EditProfile, MessageForm, PreferencesForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import or_
-from datetime import date
+from datetime import date, datetime
 
+print("!!! SERVER IS STARTING !!!", flush=True)
 
 
 ###
@@ -28,11 +31,16 @@ from datetime import date
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    """Serve static files."""
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_file(os.path.join(app.static_folder, path))
-    else:
-        return render_template('home.html')
+
+    root_dir = os.path.abspath(os.path.dirname(__file__))
+    project_dir = os.path.abspath(os.path.join(root_dir, '..'))
+
+    file_path = os.path.join(project_dir, path)
+
+    if path != "" and os.path.exists(file_path):
+        return send_from_directory(project_dir, path)
+
+    return send_from_directory(project_dir, 'index.html')
 
 @app.route('/')
 def index():
@@ -41,90 +49,157 @@ def index():
 ###
 # User Authentification and Profile Management 
 ###
-@app.route('/api/v1/auth/login', methods=['POST']) 
+@app.route('/api/v1/auth/login', methods=['POST'])
 def login():
-    # 1. Get the JSON data from the request
+
     data = request.get_json()
 
-    # 2. Instantiate the form with the JSON data
-    # We pass data=data so WTForms can map the keys to field names
-    form = LoginForm(data=data, csrf_enabled=False) # Disable CSRF for pure API calls if not using cookies
+    email = data.get("email")
+    password = data.get("password")
 
-    # 3. Validate the data (checks for required fields, email format, etc.)
-    if form.validate():
-        user = User.query.filter_by(email=form.email.data).first()
-        
-        # 4. Verify password
-        if user and check_password_hash(user.password_hash, form.password.data):
-            login_user(user)
-            return jsonify({
-                "message": "Login successful",
-                "user": {
-                    "username": user.username,
-                    "user_id": user.user_id
-                }
-            }), 200
-        
-        return jsonify({"error": "Invalid email or password"}), 401
+    #Here for Debugging purposes 
+    print("DATA:", data)
+    print("EMAIL:", email)
+    print("PASSWORD:", password)
 
-    # 5. If validation fails, return the specific form errors
-    return jsonify({"errors": form.errors}), 400
+    print(generate_password_hash("Password123!", method='pbkdf2:sha256'))
+    
+
+    
+
+    if not email or not password:
+        return jsonify({"error": "Missing credentials"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    print("USER:", user)
+
+    print("HASH IN DB:", user.password_hash)
+    print("PASSWORD CHECK:", check_password_hash(user.password_hash, password))
+
+    if user and check_password_hash(user.password_hash, password):
+        login_user(user)
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "username": user.username,
+                "user_id": user.user_id
+            }
+        }), 200
+
+    return jsonify({"error": "Invalid email or password"}), 401
 
 
-from werkzeug.security import generate_password_hash
+import traceback # Add this at the top of your file
 
 @app.route('/api/v1/signup', methods=['POST'])
 def signup():
-    data = request.get_json() 
+    data = request.get_json()
+    required_fields = ["first_name", "last_name", "username", "email", "password", "gender"]
+
+    # 1. Validation checks
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"{field} is required"}), 400
+
+    if User.query.filter_by(email=data["email"]).first():
+        return jsonify({"error": "Email already exists"}), 400
     
-    #Instantiate SignUpForm with JSON data
-    form = SignUpForm(data=data, csrf_enabled=False)
-
-    #Validates the form
-    if form.validate():
-        # Check if email already exists
-        if User.query.filter_by(email=form.email.data).first():
-            return jsonify({"error": "Email already exists"}), 400
-
+    dob_raw = data.get("dob")
+    dob_object = None
+    if dob_raw:
         try:
-            # Creates the User object using form data
-            new_user = User(
-                first_name=form.first_name.data,
-                last_name=form.last_name.data,
-                username=form.username.data,
-                dob=form.dob.data, 
-                looking_for=form.looking_for.data or 'Casual',
-                password_hash=generate_password_hash(form.password.data),
-                email=form.email.data,
-                gender=form.gender.data
-            )
-            
-            db.session.add(new_user)
-            db.session.flush() # Generates user_id
+            dob_object = datetime.strptime(dob_raw, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"error": "Invalid date format"}), 400
 
-            # Creates the Profile object automatically
-            new_profile = Profile(
-                user_id=new_user.user_id, 
-                visibility="Public", #Sets visibility of Profile to public automatically 
-                education=None,
-                photo_url=None,
-                bio=None,
-                location=None
-            )
-            
-            db.session.add(new_profile)
-            db.session.commit() 
+    try:
+        # 1. Create the User object
+        new_user = User(
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            username=data["username"],
+            email=data["email"],
+            gender=data["gender"],
+            dob=dob_object,
+            password=data["password"]
+        )
+        db.session.add(new_user)
+        
+        # Use flush to get the new_user.user_id without committing yet
+        db.session.flush() 
 
-            return jsonify({"message": f"Welcome to DriftDater {new_user.username}!"}), 201
-            
-        except Exception as e:
-            db.session.rollback() 
-            return jsonify({"error": "An error occurred during registration."}), 500
+        # 2. Create the Profile object linked to that ID
+        new_profile = Profile(
+            user_id=new_user.user_id,
+            visibility="Public"
+        )
+        db.session.add(new_profile)
 
-    #Returns validation errors (e.g., "Field Required" or "Invalid Email")
-    return jsonify({"errors": form.errors}), 400
+        # 3. Commit EVERYTHING at once
+        db.session.commit()
+        print(f"✅ SUCCESS: User {new_user.username} and Profile saved.")
+        
+        return jsonify({"message": f"Welcome {new_user.username}!"}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ DATABASE ERROR:")
+        traceback.print_exc() # This will show the EXACT error in your terminal
+        return jsonify({"error": "Registration failed", "details": str(e)}), 500
+# @app.route('/api/v1/signup', methods=['POST'])
+# def signup():
+#     data = request.get_json() 
     
-@app.route('/api/v1/auth/logout')
+#     #Instantiate SignUpForm with JSON data
+#     form = SignUpForm(data=data)
+
+#     #Validates the form
+#     if form.validate():
+#         # Check if email already exists
+#         if User.query.filter_by(email=form.email.data).first():
+#             return jsonify({"error": "Email already exists"}), 400
+
+#         try:
+#             # Creates the User object using form data
+#             new_user = User(
+#                 first_name=form.first_name.data,
+#                 last_name=form.last_name.data,
+#                 username=form.username.data,
+#                 dob=form.dob.data,
+#                 looking_for=form.looking_for.data or 'Casual',
+#                 password_hash=generate_password_hash(form.password.data),
+#                 email=form.email.data,
+#                 gender=form.gender.data
+#             )
+            
+#             db.session.add(new_user)
+#             db.session.flush() # Generates user_id
+
+#             # Creates the Profile object automatically
+#             new_profile = Profile(
+#                 user_id=new_user.user_id, 
+#                 visibility="Public", #Sets visibility of Profile to public automatically 
+#                 education=None,
+#                 photo_url=None,
+#                 bio=None,
+#                 location=None
+#             )
+            
+#             db.session.add(new_profile)
+#             db.session.commit() 
+
+#             return jsonify({"message": f"Welcome to DriftDater {new_user.username}!"}), 201
+            
+#         except Exception as e:
+#             db.session.rollback() 
+#             return jsonify({"error": "An error occurred during registration."}), 500
+
+#     #Returns validation errors (e.g., "Field Required" or "Invalid Email")
+#     return jsonify({"errors": form.errors}), 400
+    
+
+    
+@app.route('/api/v1/auth/logout', methods=['POST'])
 @login_required
 def logout():
     """
@@ -138,10 +213,13 @@ def logout():
     }), 200
 
 
-# List all user Profiles
+
 @app.route('/api/v1/profile/all', methods=['GET'])
-#@login_required 
+@login_required 
 def list_profile():
+    """
+    Lists all user Profiles
+    """
 
     # Query all profiles and join with User to avoid N+1 query issues
     profiles = Profile.query.all()
@@ -164,7 +242,7 @@ def list_profile():
 
  
 @app.route('/api/v1/profile/<int:user_id>', methods=['GET'])
-#@login_required 
+@login_required 
 def single_profile(user_id):
     """
     Gets a singular Profile when clicked on 
@@ -192,13 +270,11 @@ def single_profile(user_id):
 
 
 @app.route('/api/v1/profile', methods=['GET'])
-#@login_required 
+@login_required 
 def display_profile():
     """
     Displays current user's profile
     """
-    data = request.get_json()
-    
     #Gets current user's profile
     profile = Profile.query.filter_by(username=current_user).first()
 
@@ -224,44 +300,55 @@ def display_profile():
 
 
 @app.route('/api/v1/profile/edit', methods=['PUT'])
-#@login_required
+@login_required
 def edit_profile():
-    """
-    Allows edits to be made to the current profile
-    """
 
-    #Gets current user's profile
-    profile = Profile.query.filter_by(user_id=current_user.user_id).first()
-
-    data = request.form
+    data = request.get_json()
     photo = request.files.get('photo')
 
-    try:
-        
-        if data.get('bio') and len(data.get('bio')) > 255:
-            return jsonify({"error": "Bio too long"}), 400
+    # Instantiate form (same as signup style)
+    form = EditProfileForm(data=data, csrf_enabled=False)
 
-        
-        if photo:
-            filename = secure_filename(photo.filename)
-            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            profile.photo_url = filename
+    # Validate form
+    if form.validate():
 
-        
-        profile.update_profile(
-            visibility=data.get('visibility'),
-            education=data.get('education'),
-            bio=data.get('bio'),
-            location=data.get('location')
-        )
+        profile = Profile.query.filter_by(user_id=current_user.user_id).first()
 
-        return jsonify({
-            "message": "Profile updated successfully",
-            "photo_url": profile.photo_url 
-        }), 200
+        if not profile:
+            return jsonify({"error": "Profile not found"}), 404
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        try:
+
+            # Handle photo upload separately (not part of JSON)
+            if photo:
+                filename = secure_filename(photo.filename)
+                upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                photo.save(upload_path)
+                profile.photo_url = filename
+
+            # Update profile fields
+            profile.update_profile(
+                visibility=form.visibility.data,
+                education=form.education.data,
+                bio=form.bio.data,
+                location=form.location.data
+            )
+
+            db.session.commit()
+
+            return jsonify({
+                "message": "Profile updated successfully",
+                "photo_url": profile.photo_url
+            }), 200
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                "error": "An error occurred while updating profile."
+            }), 500
+
+    # Return validation errors (same style as signup)
+    return jsonify({"errors": form.errors}), 400
 
 
 
@@ -284,49 +371,50 @@ def age_range(age):
         return age_ranges[6]
         
 
-
-
-
-@app.route('/api/v1/profiles/<int:id>/save', methods=['POST'])
-@login_required
-def save_profile(id):
-    """
-    A user can save the profile of another user .
-    """
-    #Fetchs the target user/profile
-    target_user = User.query.get_or_404(id)
-    
-    #Prevent self-saving
-    if current_user.user_id == target_user.user_id:
-        return jsonify({"error": "You cannot save your own profile"}), 400
-
-    #Check if already saved
-    existing_save = SavedProfile.query.filter_by(
-        saver_id=current_user.user_id, 
-        saved_id=target_user.user_id
-    ).first()
-
-    if existing_save:
-
-        #If it exists, remove it (Unsave)
-        db.session.delete(existing_save)
-        db.session.commit()
-        return jsonify({"message": "Profile unsaved successfully"}), 200
-    else:
-        #If it doesn't exist, create it (Save)
-        new_save = SavedProfile(saver_id=current_user.user_id, saved_id=target_user.user_id)
-        db.session.add(new_save)
-        db.session.commit()
-        return jsonify({"message": "Profile saved successfully"}), 201
-
-
-#Create this method 
 @app.route('/api/v1/profiles/set-preferences', methods=['POST'])
 @login_required
 def set_preferences():
 
-    pass
+    data = request.get_json()
 
+    # Instantiate form with JSON (same as signup)
+    form = PreferencesForm(data=data, csrf_enabled=False)
+
+    # Validate form
+    if form.validate():
+        try:
+            # Get existing preference OR create new one
+            preference = Preference.query.filter_by(user_id=current_user.user_id).first()
+
+            if not preference:
+                preference = Preference(user_id=current_user.user_id)
+                db.session.add(preference)
+
+            preference.gender_pref = form.gender_pref.data
+            preference.education_pref = form.education_pref.data
+            preference.religion_pref = form.religion_pref.data
+            preference.age_min = form.age_min.data or 18
+            preference.age_max = form.age_max.data or 99
+
+            db.session.commit()
+
+            return jsonify({
+                "message": "Preferences updated successfully",
+                "preferences": {
+                    "gender_pref": preference.gender_pref,
+                    "education_pref": preference.education_pref,
+                    "religion_pref": preference.religion_pref,
+                    "age_min": preference.age_min,
+                    "age_max": preference.age_max
+                }
+            }), 200
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "An error occurred while saving preferences."}), 500
+
+    # Validation errors (same style as signup)
+    return jsonify({"errors": form.errors}), 400
 
 
 ###

@@ -177,7 +177,7 @@ const logout = async () => {
     
     try {
 
-        await api.get('/auth/logout')
+        await api.post('/auth/logout')
 
         localStorage.removeItem('token')
         localStorage.removeItem('user_id')
