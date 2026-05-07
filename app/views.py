@@ -307,7 +307,7 @@ def edit_profile():
     photo = request.files.get('photo')
 
     # Instantiate form (same as signup style)
-    form = EditProfileForm(data=data, csrf_enabled=False)
+    form = EditProfile(data=data, csrf_enabled=False)
 
     # Validate form
     if form.validate():
