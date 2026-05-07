@@ -179,13 +179,19 @@ const logout = async () => {
 
         await api.get('/auth/logout')
 
+    } catch (error) {
+
+        console.error(error)
+
+    } finally {
+
         localStorage.removeItem('token')
         localStorage.removeItem('user_id')
 
+        alert('Logged out successfully')
+
         router.push('/')
 
-    } catch (error) {
-        console.error(error)
     }
 }
 </script>
