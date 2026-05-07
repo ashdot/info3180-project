@@ -351,4 +351,4 @@ class Notification(db.Model):
     timestamp = db.Column(db.DateTime, default=db.func.now())
 
     # Linkage to the User Table 
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False) 

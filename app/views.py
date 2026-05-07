@@ -12,11 +12,11 @@ from app.models import User, Profile, Preference, Like, Match, Message, SavedPro
 from flask_socketio import emit
 from .forms import LoginForm, SignUpForm, EditProfile, MessageForm
 from flask import render_template, request, jsonify, send_file, flash, send_from_directory, url_for
-from flask_login import login_user, logout_user, verify_password, current_user, login_required
+from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash
 from sqlalchemy import or_
 from datetime import date
-
 
 
 
@@ -43,81 +43,89 @@ def index():
 ###
 @app.route('/api/v1/auth/login', methods=['POST']) 
 def login():
+    # 1. Get the JSON data from the request
     data = request.get_json()
 
-    #If email or password not valid, an error is thrown 
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({"error": "Missing email or password"}), 400
+    # 2. Instantiate the form with the JSON data
+    # We pass data=data so WTForms can map the keys to field names
+    form = LoginForm(data=data, csrf_enabled=False) # Disable CSRF for pure API calls if not using cookies
 
-
-    user = User.query.filter_by(email=data.get('email')).first()
-
- 
-    if user and user.check_password(data.get('password')):
-        login_user(user, remember=True) 
+    # 3. Validate the data (checks for required fields, email format, etc.)
+    if form.validate():
+        user = User.query.filter_by(email=form.email.data).first()
         
-        return jsonify({
-            "message": "Login successful",
-            "user": {
-                "username": user.username,
-                "first_name": user.first_name,
-                "user_id": user.user_id
-            }
-        }), 200
+        # 4. Verify password
+        if user and check_password_hash(user.password_hash, form.password.data):
+            login_user(user)
+            return jsonify({
+                "message": "Login successful",
+                "user": {
+                    "username": user.username,
+                    "user_id": user.user_id
+                }
+            }), 200
+        
+        return jsonify({"error": "Invalid email or password"}), 401
 
-    return jsonify({"error": "Invalid email or password"}), 401
+    # 5. If validation fails, return the specific form errors
+    return jsonify({"errors": form.errors}), 400
 
+
+from werkzeug.security import generate_password_hash
 
 @app.route('/api/v1/signup', methods=['POST'])
 def signup():
-    """
-    Allows user to create a user account.
-    """
     data = request.get_json() 
     
-    #Checks to see if the user already exists 
-    if User.query.filter_by(email=data.get('email')).first():
-        return jsonify({"error": "Email already exists"}), 400
+    #Instantiate SignUpForm with JSON data
+    form = SignUpForm(data=data, csrf_enabled=False)
 
-    try:
-        # Creates the User object
-        new_user = User(
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
-            username=data.get('username'),
-            dob=data.get('dob'), 
-            looking_for=data.get('looking_for', 'Casual'), # Provide a default if missing
-            password=data.get('password'),
-            email=data.get('email'),
-            gender=data.get('gender')
-        )
-        
-        db.session.add(new_user)
+    #Validates the form
+    if form.validate():
+        # Check if email already exists
+        if User.query.filter_by(email=form.email.data).first():
+            return jsonify({"error": "Email already exists"}), 400
 
-        # Flush sends the SQL to the DB so the user_id is generated
-        db.session.flush() 
+        try:
+            # Creates the User object using form data
+            new_user = User(
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                username=form.username.data,
+                dob=form.dob.data, 
+                looking_for=form.looking_for.data or 'Casual',
+                password_hash=generate_password_hash(form.password.data),
+                email=form.email.data,
+                gender=form.gender.data
+            )
+            
+            db.session.add(new_user)
+            db.session.flush() # Generates user_id
 
-        #Creates the Profile object automatically
-        new_profile = Profile(
-            user_id=new_user.user_id, 
-            visibility="Public", #Sets visibility of Profile to public automatically 
-            education=None,
-            photo_url=None,
-            bio=None,
-            location=None
-        )
-        
-        db.session.add(new_profile)
-        db.session.commit() 
+            # Creates the Profile object automatically
+            new_profile = Profile(
+                user_id=new_user.user_id, 
+                visibility="Public", #Sets visibility of Profile to public automatically 
+                education=None,
+                photo_url=None,
+                bio=None,
+                location=None
+            )
+            
+            db.session.add(new_profile)
+            db.session.commit() 
 
-        return jsonify({"message": f"Welcome to DriftDater {new_user.username}!"}), 201
-        
-    except Exception as e:
-        db.session.rollback() 
-        return jsonify({"error": str(e)}), 500
+            return jsonify({"message": f"Welcome to DriftDater {new_user.username}!"}), 201
+            
+        except Exception as e:
+            db.session.rollback() 
+            return jsonify({"error": "An error occurred during registration."}), 500
+
+    #Returns validation errors (e.g., "Field Required" or "Invalid Email")
+    return jsonify({"errors": form.errors}), 400
     
 @app.route('/api/v1/auth/logout')
-#@login_required
+@login_required
 def logout():
     """
     Clears the session cookie and logs the user out
@@ -631,7 +639,7 @@ def get_photo(filename):
         
 
 @app.route('/api/search', methods=['GET'])
-#@login_required
+@login_required
 def search_profiles():
     # Query parameters for searching profiles
     first_name = request.args.get('first_name', '').strip()
