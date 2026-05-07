@@ -13,34 +13,33 @@ INSERT INTO users (
     looking_for, password_hash, email, gender, has_changed_dob
 ) VALUES
 ('Aaliya',  'Thompson',  'aaliya_t',   '1996-03-14', 'Men',
- 'Password123!', 'aaliya.thompson@email.com', 'Female', false),
-
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'aaliya.thompson@email.com', 'Female', false),
 ('Marcus',  'Reid',      'marcus_r',   '1993-07-22', 'Women',
- 'Password123!', 'marcus.reid@email.com', 'Male', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'marcus.reid@email.com', 'Male', false),
 
 ('Simone',  'Clarke',    'simone_c',   '1998-11-05', 'Everyone',
- 'Password123!', 'simone.clarke@email.com', 'Female', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'simone.clarke@email.com', 'Female', false),
 
 ('Devonte', 'Brown',     'devonte_b',  '1995-01-30', 'Women',
- 'Password123!', 'devonte.brown@email.com', 'Male', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'devonte.brown@email.com', 'Male', false),
 
 ('Priya',   'Nair',      'priya_n',    '1997-06-18', 'Men',
- 'Password123!', 'priya.nair@email.com', 'Female', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'priya.nair@email.com', 'Female', false),
 
 ('Jordan',  'Francis',   'jordan_f',   '1994-09-09', 'Everyone',
- 'Password123!', 'jordan.francis@email.com', 'Non-binary', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'jordan.francis@email.com', 'Non-binary', false),
 
 ('Kezia',   'Morgan',    'kezia_m',    '1999-04-25', 'Men',
- 'Password123!', 'kezia.morgan@email.com', 'Female', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'kezia.morgan@email.com', 'Female', false),
 
 ('Liam',    'Hutchinson','liam_h',     '1992-12-03', 'Women',
- 'Password123!', 'liam.hutchinson@email.com', 'Male', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'liam.hutchinson@email.com', 'Male', false),
 
 ('Nadia',   'Levy',      'nadia_l',    '2000-08-17', 'Everyone',
- 'Password123!', 'nadia.levy@email.com', 'Female', false),
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'nadia.levy@email.com', 'Female', false),
 
 ('Tyrese',  'Campbell',  'tyrese_c',   '1991-02-11', 'Women',
- 'Password123!', 'tyrese.campbell@email.com', 'Male', false);
+ 'pbkdf2:sha256:1000000$v4jMwguNvlBLFEzS$206532695a6b1fa408e4849cba1cce130a16f2e8689b397e1eee47570dacc97d', 'tyrese.campbell@email.com', 'Male', false);
 
 -- ============================================================
 -- PROFILES
