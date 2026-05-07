@@ -1,16 +1,9 @@
 # Add any form classes for Flask-WTF here
 from flask_wtf import FlaskForm
-<<<<<<< HEAD
 from wtforms import StringField, IntegerField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField
 #from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed, SelectMultipleField,NumberRange, Optional
 # 1. Standard WTForms validators
 from wtforms.validators import InputRequired, Email, Length, Optional, NumberRange
-=======
-from wtforms import StringField, IntegerField, PasswordField, TextAreaField, SelectField, SubmitField, DateField,FileField, SelectMultipleField
-#from wtforms.validators import InputRequired, InputRequired, Email, Length, Optional,FileRequired, FileAllowed, SelectMultipleField,NumberRange, Optional
-from wtforms.validators import InputRequired, Email, Length, Optional, NumberRange
-from flask_wtf.file import FileRequired, FileAllowed
->>>>>>> bdc24b5 (Added favourites page)
 
 # 2. Flask-WTF specific file validators (This is what was missing)
 from flask_wtf.file import FileRequired, FileAllowed

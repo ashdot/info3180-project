@@ -8,6 +8,7 @@ const EditProfileView = () => import('../views/EditProfileView.vue') //maybe ren
 const SearchView = () => import('../views/SearchView.vue')
 const MatchesView = () => import('../views/MatchesView.vue')
 const MessagesView = () => import('../views/MessagesView.vue')
+const FavouritesView = () => import('../views/FavouritesView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

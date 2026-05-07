@@ -176,7 +176,7 @@ const handleLogin = async () => {
     }
 
     // REDIRECT
-    router.push('/discover')
+    router.push('/search')
 
   } catch (error) {
 

@@ -12,7 +12,7 @@
             <!--Menu Header-->
             <div class="menu-header">
                 <!--<i class="fi fi-br-menu-burger hamburger" @click="toggleSidebar"></i>-->
-                <h2>Menu</h2>
+                <h3>Menu</h3>
             </div>
   
             <!-- Discover -->
@@ -192,7 +192,7 @@ const logout = async () => {
   
 <style scoped>
   
-  .sidebar {
+.sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -227,10 +227,10 @@ const logout = async () => {
     z-index: 1001;
 
     margin-top: 15px;
-    margin-left: 10px;
+    margin-left: 5px;
 
-    width: 45px;
-    height: 45px;
+    width: 50px;
+    height: 50px;
 
     border: none;
     border-radius: 10px;
@@ -240,6 +240,7 @@ const logout = async () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: transparent;
 }
  
 .sidebar.collapsed {
@@ -263,8 +264,9 @@ const logout = async () => {
     gap: 12px;
   
     color: white;
-    margin-top: 20px;
+    margin-top: 30px;
     margin-bottom: 30px;
+    padding-left: 50px;
 }
   
   
@@ -287,12 +289,6 @@ const logout = async () => {
 .nav-item:hover {
     background: rgba(255,255,255,0.15);
 }
-
-/*
-.active {
-    background: white;
-    color: black;
-}*/
 
 .nav-item.active {
   background: white;

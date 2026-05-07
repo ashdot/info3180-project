@@ -9,7 +9,7 @@
       <!-- HEADER -->
       <div class="search-header">
 
-        <h1>Discover</h1>
+        <h2>Discover</h2>
 
         <div class="search-row">
 
@@ -360,7 +360,7 @@ const saveProfile = async (user_id) => {
 
 .search-page{
   min-height: 100vh;
-  background: #f5f5f5;
+  background: white;
   padding: 40px 30px;
 }
 
@@ -376,11 +376,11 @@ const saveProfile = async (user_id) => {
   margin-bottom: 35px;
 }
 
-.search-header h1{
+.search-header h2{
   text-align: center;
-  font-size: 48px;
-  font-weight: 700;
+  /*font-size: 42px;*/
   color: #222;
+  margin-top: 20px;
   margin-bottom: 25px;
 }
 

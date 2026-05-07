@@ -135,12 +135,6 @@ const filteredMatches = computed(() => {
     margin-bottom: 10px;
 }
   
-.heading h1 {
-    font-size: 42px;
-    font-weight: 700;
-}
-
-
 .filters {
     display: flex;
     gap: 14px;

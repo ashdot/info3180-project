@@ -79,11 +79,6 @@ import Sidebar from '@/components/Sidebar.vue'
     margin-bottom: 10px;
 }
   
-.heading h1 {
-    font-size: 42px;
-    font-weight: 700;
-}
-
 .favourites-grid {
     display: grid;
   
