@@ -125,7 +125,7 @@ Endpoint | Method | Description | Auth Required | Response |
 /api/v1/messages/<match_id> | GET | Get conversation history for a match | Yes | 200 + messages[]
 /api/v1/messages/<match_id> | POST | Send a message to a match | Yes | 201 + message
 /api/v1/notifications | GET | Get user notifications | Yes | 200 + notifications[]
-/api/search | GET | Search/filter profiles with sorting | No* | 200 + results[]
+/api/search | GET | Search/filter profiles with sorting | Yes | 200 + results[]
 
 
 
