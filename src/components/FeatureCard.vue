@@ -1,8 +1,8 @@
 <template>
     <div class="feature">
-      <div class="icon">
-        <img :src="icon" />
-      </div>
+        <div class="icon">
+            <span v-html="icon"></span>
+        </div>
       <h3>{{ title }}</h3>
       <p>{{ text }}</p>
     </div>

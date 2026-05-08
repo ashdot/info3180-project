@@ -15,7 +15,7 @@ from flask import render_template, request, jsonify, send_file, flash, send_from
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash
-from sqlalchemy import or_
+from sqlalchemy import or_, desc
 from datetime import date
 
 
@@ -29,10 +29,7 @@ from datetime import date
 @app.route('/<path:path>')
 def catch_all(path):
     """Serve static files."""
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_file(os.path.join(app.static_folder, path))
-    else:
-        return render_template('home.html')
+    return jsonify({"error": "Not found"}), 404
 
 @app.route('/')
 def index():
@@ -48,14 +45,14 @@ def login():
 
     # 2. Instantiate the form with the JSON data
     # We pass data=data so WTForms can map the keys to field names
-    form = LoginForm(data=data, csrf_enabled=False) # Disable CSRF for pure API calls if not using cookies
+    form = LoginForm(data=data, meta={'csrf': False}) # Disable CSRF for pure API calls if not using cookies
 
     # 3. Validate the data (checks for required fields, email format, etc.)
     if form.validate():
         user = User.query.filter_by(email=form.email.data).first()
         
         # 4. Verify password
-        if user and check_password_hash(user.password_hash, form.password.data):
+        if user and check_password_hash(user.password, form.password.data):
             login_user(user)
             return jsonify({
                 "message": "Login successful",
@@ -78,7 +75,7 @@ def signup():
     data = request.get_json() 
     
     #Instantiate SignUpForm with JSON data
-    form = SignUpForm(data=data, csrf_enabled=False)
+    form = SignUpForm(data=data, meta={'csrf': False})
 
     #Validates the form
     if form.validate():
@@ -94,7 +91,7 @@ def signup():
                 username=form.username.data,
                 dob=form.dob.data, 
                 looking_for=form.looking_for.data or 'Casual',
-                password_hash=generate_password_hash(form.password.data),
+                password=form.password.data,
                 email=form.email.data,
                 gender=form.gender.data
             )
@@ -148,12 +145,14 @@ def list_profile():
     
     result = []
     for p in profiles:
+        photo = url_for('get_photo', filename=p.photo_url, _external=True) if p.photo_url else None
         result.append({
             "profile_id": p.profile_id,
             "user_id": p.user_id,
             "username": p.user.username if p.user else "Unknown",
-            "full_name": f"{p.user.first_name} {p.user.last_name}" if p.user else "Unknown",
-            "photo_url": p.photo_url,
+            "first_name": p.user.first_name if p.user else "Unknown",
+            "last_name": p.user.last_name if p.user else "Unknown",
+            "photo_url": photo,
             "location": p.location,
             "age": p.age,
             "interests": p.interests,
@@ -164,7 +163,7 @@ def list_profile():
 
  
 @app.route('/api/v1/profile/<int:user_id>', methods=['GET'])
-#@login_required 
+@login_required 
 def single_profile(user_id):
     """
     Gets a singular Profile when clicked on 
@@ -178,6 +177,8 @@ def single_profile(user_id):
         "data": {
             "profile_id": profile.profile_id,
             "user_id": profile.user_id,
+            "first_name": profile.user.first_name,
+            "last_name": profile.user.last_name,
             "username": profile.user.username,
             "bio": profile.bio,
             "education": profile.education,
@@ -192,15 +193,14 @@ def single_profile(user_id):
 
 
 @app.route('/api/v1/profile', methods=['GET'])
-#@login_required 
+@login_required 
 def display_profile():
     """
     Displays current user's profile
     """
-    data = request.get_json()
-    
+        
     #Gets current user's profile
-    profile = Profile.query.filter_by(username=current_user).first()
+    profile = Profile.query.filter_by(user_id=current_user.user_id).first()
 
     if not profile:
         return jsonify({"error": "Profile not found"}), 404
@@ -217,50 +217,59 @@ def display_profile():
         "bio": profile.bio,
         "photo": photo,
         "location": profile.location,
-        "gender": profile.gender,
+        "gender": profile.user.gender,
         "looking_for": profile.looking_for,
         "interests": profile.interests
     }), 200
 
 
 @app.route('/api/v1/profile/edit', methods=['PUT'])
-#@login_required
+@login_required
 def edit_profile():
     """
     Allows edits to be made to the current profile
     """
 
-    #Gets current user's profile
+    # Gets current user's profile
     profile = Profile.query.filter_by(user_id=current_user.user_id).first()
+
+    # Guard: profile must exist
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 404
 
     data = request.form
     photo = request.files.get('photo')
 
     try:
-        
+
         if data.get('bio') and len(data.get('bio')) > 255:
             return jsonify({"error": "Bio too long"}), 400
 
-        
-        if photo:
+        if photo and app.config.get('UPLOAD_FOLDER'):
             filename = secure_filename(photo.filename)
             photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             profile.photo_url = filename
 
-        
         profile.update_profile(
             visibility=data.get('visibility'),
             education=data.get('education'),
             bio=data.get('bio'),
-            location=data.get('location')
+            location=data.get('location'),
+            interests=data.get('interests')
         )
+
+        db.session.commit()
 
         return jsonify({
             "message": "Profile updated successfully",
-            "photo_url": profile.photo_url 
+            "photo_url": profile.photo_url
         }), 200
 
     except Exception as e:
+        db.session.rollback()
+        print("EDIT PROFILE ERROR:", e)
+        print("WORKING DIR:", os.getcwd())
+        print("UPLOAD PATH:", app.config.get('UPLOAD_FOLDER'))
         return jsonify({"error": str(e)}), 500
 
 
@@ -283,8 +292,6 @@ def age_range(age):
     if age > 60:
         return age_ranges[6]
         
-
-
 
 
 @app.route('/api/v1/profiles/<int:id>/save', methods=['POST'])
@@ -319,13 +326,74 @@ def save_profile(id):
         db.session.commit()
         return jsonify({"message": "Profile saved successfully"}), 201
 
+@app.route('/api/v1/profiles/saved', methods=['GET'])
+@login_required
+def get_saved_profiles():
+    saved = SavedProfile.query.filter_by(saver_id=current_user.user_id).all()
+    result = []
+    for s in saved:
+        user = User.query.get(s.saved_id)
+        if not user or not user.profile:
+            continue
+        photo = url_for('get_photo', filename=user.profile.photo_url, _external=True) if user.profile.photo_url else None
+        result.append({
+            "user_id": user.user_id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "photo": photo,
+            "bio": user.profile.bio,
+            "location": user.profile.location,
+            "age": user.profile.age,
+            "interests": user.profile.interests,
+            "education": user.profile.education
+        })
+    return jsonify({"saved_profiles": result}), 200
 
 #Create this method 
 @app.route('/api/v1/profiles/set-preferences', methods=['POST'])
 @login_required
 def set_preferences():
+    data = request.get_json()
 
-    pass
+    # Instantiate form with JSON (same as signup)
+    form = PreferencesForm(data=data, csrf_enabled=False)
+
+    # Validate form
+    if form.validate():
+        try:
+            # Get existing preference OR create new one
+            preference = Preference.query.filter_by(user_id=current_user.user_id).first()
+
+            if not preference:
+                preference = Preference(user_id=current_user.user_id)
+                db.session.add(preference)
+
+            preference.gender_pref = form.gender_pref.data
+            preference.education_pref = form.education_pref.data
+            preference.religion_pref = form.religion_pref.data
+            preference.age_min = form.age_min.data or 18
+            preference.age_max = form.age_max.data or 99
+
+            db.session.commit()
+
+            return jsonify({
+                "message": "Preferences updated successfully",
+                "preferences": {
+                    "gender_pref": preference.gender_pref,
+                    "education_pref": preference.education_pref,
+                    "religion_pref": preference.religion_pref,
+                    "age_min": preference.age_min,
+                    "age_max": preference.age_max
+                }
+            }), 200
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "An error occurred while saving preferences."}), 500
+
+    # Validation errors (same style as signup)
+    return jsonify({"errors": form.errors}), 400
 
 
 
@@ -339,8 +407,15 @@ def calculate_match_score(user, profile): #user is a dict put together in anothe
     Categories: Location, Age, Interests and Gender
     """
     score = 0
-    candidate = {'location': profile.location, 'age': profile.age(), 'interests': profile.interests, 'gender': profile.user.gender}
-    user_pref = {'location': user.profile.location, 'age': [user.preferences.age_min, user.preferences.age_max], 'interests': user.profile.interests, 'gender': user.preferences.gender_pref}
+    pref = user.preferences[0] if user.preferences else None
+    if not pref:
+        return 0
+    
+    candidate_interests = profile.interests or ''
+    user_interests = user.profile.interests or '' if user.profile else ''
+    
+    candidate = {'location': profile.location, 'age': profile.age, 'interests': candidate_interests, 'gender': profile.user.gender}
+    user_pref = {'location': user.profile.location, 'age': [pref.age_min, pref.age_max], 'interests': user_interests, 'gender': pref.gender_pref}
         
     # Weights for each category (optional, adds precision)
     weights = {'location': 0.5, 'age': 1.5, 'interests': 0.5, 'gender': 1.5} 
@@ -354,8 +429,9 @@ def calculate_match_score(user, profile): #user is a dict put together in anothe
         score += weights['age'] 
 
     #Adds 0.5 to score for each matching interest.
-    for i in candidate['interests']:
-        if i in user_pref['interests']: 
+    for i in candidate['interests'].split(','):
+        i = i.strip()
+        if i and i in user_pref['interests']: 
             score += weights['interests']
             
     if candidate['gender'] == user_pref['gender'] or user_pref['gender'] == 'Both':
@@ -363,7 +439,7 @@ def calculate_match_score(user, profile): #user is a dict put together in anothe
         
     return score
 
-@app.route('/api/v1/matches', methods = ['GET'])
+@app.route('/api/v1/discover', methods = ['GET'])
 @login_required
 def display_matches(): 
     """
@@ -375,29 +451,73 @@ def display_matches():
     interacted = db.session.query(Like.liked_id).filter(Like.liker_id == user_id).all()
     interacted_ids = [i[0] for i in interacted] + [user_id]
     
-    profiles = db.session.execute(db.select(Profile)).filter(~Profile.user_id.in_(interacted_ids)).scalars()
+    profiles = db.session.execute(
+        db.select(Profile).filter(~Profile.user_id.in_(interacted_ids))
+    ).scalars()
     
     user = db.session.execute(db.select(User).filter_by(user_id=user_id)).scalar_one() 
     
     scored_match_list = []
     for profile in profiles:
-        score = calculate_match_score(user, profile)
+        try:
+            score = calculate_match_score(user, profile)
+        except Exception as e:
+            print("SCORE ERROR:", e)
+            score = 0
+        # score = calculate_match_score(user, profile)
         photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else profile.photo_url
 
         scored_match_list.append({
-            "id": profile.user_id,
-            "photo": photo,
-            "username": profile.user.username,
+            "user_id":    profile.user_id,
+            "photo":      photo,
+            "username":   profile.user.username,
             "first_name": profile.user.first_name,
-            "last_name": profile.user.last_name,
-            "gender": profile.user.gender,
-            "bio": profile.bio,
-            "score": score
+            "last_name":  profile.user.last_name,
+            "gender":     profile.user.gender,
+            "age":        profile.age,
+            "bio":        profile.bio,
+            "location":   profile.location,
+            "interests":  profile.interests,
+            "education":  profile.education,
+            "score":      score
         })
     #top_50_matches = scored_match_list[:50]
     #return jsonify({"matches": top_50_matches, "total_available": len(scored_match_list)}), 200
     
     return jsonify({"matches": scored_match_list}), 200
+
+@app.route('/api/v1/matches', methods=['GET'])
+@login_required
+def my_matches():
+    """Displays mutual matches"""
+    matches = Match.query.filter(
+        or_(
+            Match.user1_id == current_user.user_id,
+            Match.user2_id == current_user.user_id
+        )
+    ).all()
+
+    result = []
+    for match in matches:
+        other_id = match.user2_id if match.user1_id == current_user.user_id else match.user1_id
+        other_user = User.query.get(other_id)
+        if not other_user or not other_user.profile:
+            continue
+        photo = url_for('get_photo', filename=other_user.profile.photo_url, _external=True) if other_user.profile.photo_url else None
+        result.append({
+            "match_id": match.match_id,
+            "user_id": other_user.user_id,
+            "username": other_user.username,
+            "first_name": other_user.first_name,
+            "last_name": other_user.last_name,
+            "photo": photo,
+            "bio": other_user.profile.bio,
+            "location": other_user.profile.location,
+            "age": other_user.profile.age,
+            "matched_at": match.matched_at.isoformat()
+        })
+
+    return jsonify({"matches": result}), 200
 
 @app.route('/api/v1/profiles/<id>/like', methods = ['POST'])
 @login_required
@@ -410,7 +530,7 @@ def like_profile(id):
     profile_to_like = User.query.get_or_404(id)
     
     # Check if the user is trying to like themselves
-    if current_user.user_id == profile_to_like.id:
+    if current_user.user_id == profile_to_like.user_id:
         return jsonify({"error": "You cannot like your own profile"}), 400
 
     # remove like from database if user presses like again
@@ -431,9 +551,9 @@ def like_profile(id):
     # if the above cases are false, like the profile and add like record to database
     current_user.like(profile_to_like)
     like_notification = Notification(user_id=profile_to_like.user_id, 
-                                     message=f"{current_user.profile.username} liked your profile!")
+                                     message=f"{current_user.username} liked your profile!")
     db.session.add(like_notification)
-    emit('new_notification', {'message': f"{current_user.profile.username} liked your profile!"}, 
+    emit('new_notification', {'message': f"{current_user.username} liked your profile!"}, 
          room=str(profile_to_like.user_id), namespace='/')
     
     is_mutual = profile_to_like.has_liked(current_user)
@@ -461,29 +581,29 @@ def like_profile(id):
 
             # Notification to current user
             match_notification_1 = Notification(user_id=current_user.user_id, 
-                                     message=f"You have matched with {profile_to_like.profile.username}!")
+                                     message=f"You have matched with {profile_to_like.username}!")
             # Notification to liked_user
             match_notification_2 = Notification(user_id=profile_to_like.user_id, 
-                                     message=f"You have matched with {current_user.profile.username}!")
+                                     message=f"You have matched with {current_user.username}!")
             
             db.session.add_all([match_notification_1, match_notification_2])
             
             
             # Notification to current user
-            emit('new_match', {'message': f"Match! You and {profile_to_like.profile.username} liked each other!"}, 
+            emit('new_match', {'message': f"Match! You and {profile_to_like.username} liked each other!"}, 
                  room=str(current_user.user_id), namespace='/')
             
             # Notification to liked_user
-            emit('new_match', {'message': f"Match! You and {current_user.profile.username} liked each other!"}, 
+            emit('new_match', {'message': f"Match! You and {current_user.username} liked each other!"}, 
                  room=str(profile_to_like.user_id), namespace='/')
 
             db.session.commit()
             return jsonify({"message": f"You have matched with {profile_to_like.username}",
                             "match_id": new_match.match_id }), 201
 
-    
+    db.session.commit()
     return jsonify({"message": f"You liked {profile_to_like.username}",
-                    "likes_count": profile_to_like.likes_received.count()}), 201
+                    "likes_count": Like.query.filter_by(liker_id=profile_to_like.user_id, action='like').count()}), 201
 
 
 @app.route('/api/v1/profiles/<id>/dislike', methods = ['POST'])
@@ -537,25 +657,25 @@ def contacts(user_id):
     """
     Displays a contact list of mutual matches.
     """
-    contact_ids = Like.query(Like.liked_id).filter_by(user1_id = user_id, is_match="Yes").all()
+    contact_rows = db.session.query(Like.liked_id).filter_by(liker_id=user_id, is_match="Yes").all()
     contact_list = []
-    for contact_id in contact_ids:
-        contact = User.query.get_or_404(user_id)
-        photo = url_for('get_photo', filename=contact.profile.photo_url) if contact.profile.photo_url else contact.profile.photo_url
-
-        # displays contacts like in whatsapp ig can use either username, 
-        # or firstname and lastname in frontend display
+    for row in contact_rows:
+        contact = User.query.get(row[0])  # FIX: unpack tuple correctly
+        if not contact:
+            continue
+        photo = url_for('get_photo', filename=contact.profile.photo_url, _external=True) if contact.profile and contact.profile.photo_url else None
         contact_list.append({
+            "user_id": contact.user_id,
             "username": contact.username,
             "first_name": contact.first_name,
             "last_name": contact.last_name,
             "photo": photo,
-            "bio": contact.profile.bio
+            "bio": contact.profile.bio if contact.profile else None
         })
     return jsonify({"contacts": contact_list}), 200
 
 
-@app.route('/api/v1/messages/<match_id>', methods=['GET'])
+@app.route('/api/v1/messages/<int:match_id>', methods=['GET'])
 @login_required
 def message_display(match_id):
     """
@@ -566,22 +686,24 @@ def message_display(match_id):
     message_list = []
     for message in messages:
         message_list.append({
-            message_list.append({
-                "message_id": message.message_id,
-                "sender": message.sender.username,
-                "receiver": message.receiver.username,
-                "content": message.content,
-                "timestamp": message.timestamp.isoformat(), 
-})
+            "message_id": message.message_id,
+            "sender": message.sender.username,
+            "receiver": message.receiver.username,
+            "content": message.content,
+            "timestamp": message.timestamp.isoformat(),
         })
     return jsonify({"messages": message_list}), 200
     
     
-@app.route('/api/v1/messages/<match_id>', methods=['POST'])
+@app.route('/api/v1/messages/<int:match_id>', methods=['POST'])
 @login_required
 def send_message(match_id):
-    data = request.form
+    data = request.get_json() or request.form
     content = data.get('message')
+
+    if not content:
+        return jsonify({"error": "Message content is required"}), 400
+
     match = Match.query.get_or_404(match_id)
     
     if current_user.user_id == match.user1_id:
@@ -594,16 +716,20 @@ def send_message(match_id):
     new_message = Message(match_id=match_id, sender_id=current_user.user_id, receiver_id=receiver_id, content=content)
     db.session.add(new_message)
     
+    # FIX: current_user.profile.username doesn't exist — username is on current_user directly
     new_notif = Notification(user_id=receiver_id, 
-                            message=f"{current_user.profile.username} sent you a message.")
+                            message=f"{current_user.username} sent you a message.")
     db.session.add(new_notif)
     
-    emit('new_message', {'message': f"{current_user.profile.username} sent you a message."}, 
-                 room=str(receiver_id), namespace='/')
+    try:
+        emit('new_message', {'message': f"{current_user.username} sent you a message."}, 
+                     room=str(receiver_id), namespace='/')
+    except RuntimeError:
+        pass
     
     db.session.commit()
     return jsonify({"message": "Message sent!",
-                    "message_id": new_message.message_id }), 201
+                    "message_id": new_message.message_id}), 201
 
 @app.route('/api/v1/notifications', methods=['GET'])
 @login_required
@@ -617,7 +743,7 @@ def display_notifications():
     notification_list = []
     for notif in notifications:
         notification_list.append({
-            'id': notif.id,
+            'id': notif.notif_id,  # FIX: was notif.id
             'message': notif.message,
             'timestamp': notif.timestamp.strftime('%Y-%m-%d %H:%M:%S')
         })
@@ -638,38 +764,32 @@ def get_photo(filename):
     return send_from_directory(os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']), filename)  
         
 
-@app.route('/api/search', methods=['GET'])
+@app.route('/api/v1/search', methods=['GET'])
 @login_required
 def search_profiles():
     # Query parameters for searching profiles
     first_name = request.args.get('first_name', '').strip()
     last_name = request.args.get('last_name', '').strip()
-    min_age = request.args.get('min_age', type=int)
-    max_age = request.args.get('max_age', type=int)
-    preference = request.args.get('preference', '').strip()
     location = request.args.get('location', '').strip()
     education = request.args.get('education', '').strip()
-    #religion = request.args.get('religion', '').strip()
     interests = request.args.get('interests', '').strip()
     
-    if not any([first_name, last_name,location, min_age, max_age, preference, education, interests ]): #religion, ]):
-        return jsonify(error="At least one search parameter is required"), 400
+    min_age = request.args.get('min_age', type=int) or request.args.get('age', type=int)
+    max_age = request.args.get('max_age', type=int)
     
-    query = db.session.query(Profile, User).join(User, Profile.user_id_fk == User.user_id)
+    query = db.session.query(Profile, User).join(User, Profile.user_id == User.user_id).order_by(Profile.profile_id.desc())
     
     # Apply filters based on parameters: preference(sexuality), age range, location, education, religion
     if first_name:
         query = query.filter(User.first_name.ilike(f'%{first_name}%'))
-    if preference:
-        query = query.filter(Profile.preference.ilike(f'%{preference}%'))
+    if last_name:
+        query = query.filter(User.last_name.ilike(f'%{last_name}%'))
     if location:
         query = query.filter(Profile.location.ilike(f'%{location}%'))
     if education:
         query = query.filter(Profile.education.ilike(f'%{education}%'))
     if interests:
         query = query.filter(Profile.interests.ilike(f'%{interests}%'))
-    #if religion:
-        #query = query.filter(Profile.religion.ilike(f'%{religion}%'))
         
     today = date.today()
     
@@ -679,62 +799,37 @@ def search_profiles():
     if max_age is not None:
         min_birthdate = date(today.year - max_age, today.month, today.day)
         query = query.filter(User.dob >= min_birthdate)
-    results = query.all()
+
+    results = query.order_by(Profile.profile_id.desc()).all()
 
     # Sort options (newest, most similar, etc.)
     sort_by = request.args.get('sort_by', 'newest')
     if sort_by == 'newest':
-        #query = query.order_by(Profile.created_at.desc())
-        results.sort(key=lambda x: x[0].created_at, reverse=True)
+        results = query.order_by(Profile.profile_id.desc()).all()
     elif sort_by == 'most_similar':
         current_user_profile = User.query.filter_by(user_id=current_user.user_id).first() 
         results.sort(key=lambda x: calculate_match_score(current_user_profile, x[0]), reverse=True)
     
+    
     # Format results for JSON response
     formatted_results = []
     for profile, user in results:
+        photo = url_for('get_photo', filename=profile.photo_url) if profile.photo_url else None
         formatted_results.append({
             'user_id': user.user_id,
             'username': user.username,
             'first_name': user.first_name,
+            'last_name': user.last_name,
             'age': age_range(profile.age),
             'bio': profile.bio,
-            'photo': profile.photo_url,
+            'photo': photo,
             'location': profile.location,
-            'gender': profile.gender,
+            'gender': user.gender,
             'looking_for': profile.looking_for,
             'interests': profile.interests,
-            'preference': profile.preference,
             'education': profile.education,
-            #'religion': profile.religion,
         })
     return jsonify(profiles=formatted_results), 200
-
-
-
-# @app.route('/api/v1/bookmarks', methods=['POST'])
-# #@login_required
-# def bookmark_profiles():
-#     profile_id = request.json.get('profile_id')
-    
-#     if not profile_id:
-#         return jsonify(error="Profile ID is required"), 400
-    
-#     profile = Profile.query.get(profile_id)
-#     if not profile:
-#         return jsonify(error="Profile not found"), 404
-    
-#     existing_bookmark = Like.query.filter_by(liker_id=request.user_id, liked_id=profile_id, action='bookmark').first()
-#     if existing_bookmark:
-#         return jsonify(error="Profile already bookmarked"), 400
-    
-#     # Use of Like table with action='bookmark' inlcuded with 'like/dislike OR can use a separate Bookmark table
-#     bookmark = Like.query.filter_by(liker_id=request.user_id, action='bookmark')
-#     db.session.add(bookmark)
-#     db.session.commit()
-    
-#     return jsonify(message="Profile bookmarked successfully"), 200
-        
 
 ###
 # The functions below should be applicable to all Flask apps.
@@ -777,4 +872,4 @@ def add_header(response):
 @app.errorhandler(404)
 def page_not_found(error):
     """Custom 404 page."""
-    return render_template('404.html'), 404
+    return jsonify({"error": "Not found"}), 404

@@ -18,6 +18,7 @@
             type="text"
             placeholder="Search profiles..."
             class="search-bar"
+            @keyup.enter="searchProfiles"
           />
 
           <button
@@ -191,605 +192,361 @@
 
       </div>
 
-      <!-- EMPTY -->
-      <div
-        v-if="profiles.length === 0"
-        class="empty-state"
-      >
+      <!-- PRE-SEARCH -->
+      <div v-if="!searched" class="empty-state">
+        <h2>Find Someone</h2>
+        <p>Search by name, use filters, or just hit Search to browse everyone.</p>
+      </div>
 
-        <h2>No Profiles Yet</h2>
-
-        <p>
-          Profiles will appear here after users sign up.
-        </p>
-
+      <!-- NO RESULTS -->
+      <div v-else-if="profiles.length === 0" class="empty-state">
+        <h2>No Profiles Found</h2>
+        <p>Try adjusting your search or filters.</p>
       </div>
 
       <!-- PROFILES -->
-      <div
-        v-else
-        class="profiles-grid"
-      >
+      <div v-if="profiles.length > 0" class="profiles-grid">
 
-        <div
-          v-for="profile in profiles"
-          :key="profile.user_id"
-          class="profile-card"
-        >
-
-          <div class="match-tag">
-            {{ profile.score || 70 }}% Match
-          </div>
-
-          <img
-            :src="profile.photo"
-            class="profile-img"
-          />
-
-          <div class="profile-overlay">
-
-            <h3>
-              {{ profile.username }},
-              {{ profile.age }}
-            </h3>
-
-            <p class="location-text">
-              📍 {{ profile.location }}
-            </p>
-
-          </div>
-
-          <button
-            @click="saveProfile(profile.user_id)"
-            class="save-btn"
-          >
-            Save
-          </button>
-
-        </div>
-
+        <ProfileCard v-for="profile in profiles" :key="profile.user_id" :profile="profile">
+          <template #actions>
+            <button class="slot-btn view" @click="viewProfile(profile.user_id)">View Profile</button>
+            <button class="slot-btn save" @click="saveProfile(profile.user_id)">Save</button>
+          </template>
+        </ProfileCard>
       </div>
-
     </div>
-
   </div>
-
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted} from 'vue'
+import { useRouter } from 'vue-router'
 
 import Sidebar from '@/components/Sidebar.vue'
+import api from '@/services/api'
+import ProfileCard from '@/components/ProfileCard.vue'
 
 const first_name = ref('')
 const location = ref('')
-const age = ref(25)
+const age = ref(40)
+const router = useRouter()
 
 const sort_by = ref('newest')
-
 const showFilters = ref(false)
-
 const selectedInterests = ref([])
-
 const profiles = ref([])
+const searched = ref(false)
+
+async function listProfiles() {
+  try {
+    const response = await api.get('/profile/all')
+    profiles.value = response.data.profiles || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  listProfiles()
+})
 
 /* SEARCH */
 const searchProfiles = async () => {
-
   try {
+    const params = new URLSearchParams()
 
-    const params = new URLSearchParams({
-      first_name: first_name.value,
-      location: location.value,
-      age: age.value,
-      interests: selectedInterests.value.join(','),
-      sort_by: sort_by.value
-    })
+    if (first_name.value)                   params.append('first_name', first_name.value)
+    if (location.value)                     params.append('location', location.value)
+    if (selectedInterests.value.length)     params.append('interests', selectedInterests.value.join(','))
+    params.append('max_age', age.value)
+    params.append('sort_by', sort_by.value)
 
-    const response = await fetch(
-      `http://127.0.0.1:5000/api/search?${params.toString()}`
-    )
+    // api baseURL is /api/v1 — backend route moved to /api/v1/search to match
+    const response = await api.get(`/search?${params.toString()}`)
 
-    const data = await response.json()
-
-    profiles.value = data.profiles || []
-
+    profiles.value = response.data.profiles || []
+    searched.value = true
     showFilters.value = false
 
   } catch (error) {
-
-    console.log(error)
-
+    console.error(error)
   }
 }
 
 /* INTEREST TOGGLE */
 const toggleInterest = (interest) => {
-
-  if(selectedInterests.value.includes(interest)){
-
-    selectedInterests.value =
-      selectedInterests.value.filter(
-        item => item !== interest
-      )
-
+  if (selectedInterests.value.includes(interest)) {
+    selectedInterests.value = selectedInterests.value.filter(i => i !== interest)
   } else {
-
     selectedInterests.value.push(interest)
-
   }
 }
 
 /* CLEAR */
 const clearFilters = () => {
-
   location.value = ''
-
-  age.value = 25
-
+  age.value = 40
   selectedInterests.value = []
+}
 
+const viewProfile = (user_id) => {
+  router.push(`/profile/${user_id}`)
 }
 
 /* SAVE */
 const saveProfile = async (user_id) => {
-
   try {
-
-    const response = await fetch(
-      `http://127.0.0.1:5000/api/v1/profiles/${user_id}/save`,
-      {
-        method: 'POST',
-        credentials: 'include'
-      }
-    )
-
-    const data = await response.json()
-
-    alert(data.message)
-
+    const response = await api.post(`/profiles/${user_id}/save`)
+    alert(response.data.message)
   } catch (error) {
-
-    console.log(error)
-
+    console.error(error)
   }
 }
 </script>
 
 <style scoped>
 
-.search-page{
+.search-page {
   min-height: 100vh;
-  background: white;
+  background: #f5f5f7;
   padding: 40px 30px;
 }
 
-.search-container{
+.search-container {
   max-width: 1200px;
   margin: auto;
   position: relative;
 }
 
-/* HEADER */
+.search-header { margin-bottom: 35px; }
 
-.search-header{
-  margin-bottom: 35px;
-}
-
-.search-header h2{
+.search-header h2 {
   text-align: center;
-  /*font-size: 42px;*/
-  color: #222;
+  font-size: 36px;
+  font-weight: 800;
+  color: #111;
   margin-top: 20px;
   margin-bottom: 25px;
 }
 
-/* SEARCH */
-
-.search-row{
+.search-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 15px;
 }
 
-.search-bar{
+.search-bar {
   width: 100%;
   max-width: 900px;
-
-  height: 60px;
-
+  height: 58px;
   padding: 0 25px;
-
   border-radius: 40px;
-
-  border: 1px solid #ddd;
-
+  border: 1.5px solid #e0e0e0;
   background: white;
-
-  font-size: 18px;
-
+  font-size: 16px;
   box-sizing: border-box;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.search-bar:focus{
+.search-bar:focus {
   outline: none;
-  border-color: #e86b56;
+  border-color: #ff4d4d;
+  box-shadow: 0 2px 16px rgba(255,77,77,0.15);
 }
 
-.filter-btn{
-  width: 60px;
-  height: 60px;
-
-  border-radius: 50%;
-
-  border: 1px solid #ddd;
-
-  background: white;
-
-  font-size: 24px;
-
+.slot-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-
-  transition: 0.3s;
+  transition: all 0.2s;
 }
 
-.filter-btn:hover{
-  background: #f3f3f3;
+.slot-btn.view { background: #f8f8f8; color: #555; }
+.slot-btn.view:hover { background: #ffe0e6; color: #ff4d4d; }
+.slot-btn.save { background: linear-gradient(135deg, #ff4d4d, #ff7a45); color: white; }
+.slot-btn.save:hover { opacity: 0.9; }
+
+.filter-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 1.5px solid #e0e0e0;
+  background: white;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* FILTER PANEL */
+.filter-btn:hover {
+  background: #ffe0e6;
+  border-color: #ff4d4d;
+  color: #ff4d4d;
+}
 
-.filter-overlay{
+.filter-overlay {
   position: absolute;
-
   top: 130px;
   right: 40px;
-
   z-index: 1000;
 }
 
-.filter-modal{
+.filter-modal {
   width: 420px;
-
   background: white;
-
-  border-radius: 20px;
-
-  padding: 25px;
-
-  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.12);
 }
 
-.filter-top{
+.filter-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  margin-bottom: 25px;
+  margin-bottom: 28px;
 }
 
-.filter-top h2{
-  font-size: 32px;
+.filter-top h2 {
+  font-size: 24px;
+  font-weight: 800;
   margin: 0;
+  color: #111;
 }
 
-.close-btn,
-.clear-btn{
+.close-btn, .clear-btn {
   border: none;
   background: none;
   cursor: pointer;
 }
 
-.close-btn{
-  font-size: 28px;
-}
+.close-btn { font-size: 20px; color: #aaa; transition: color 0.2s; }
+.close-btn:hover { color: #ff4d4d; }
+.clear-btn { color: #bbb; font-size: 14px; font-weight: 600; transition: color 0.2s; }
+.clear-btn:hover { color: #ff4d4d; }
 
-.clear-btn{
-  color: #aaa;
-  font-size: 16px;
-}
+.filter-section { margin-bottom: 28px; }
 
-.filter-section{
-  margin-bottom: 30px;
-}
-
-.filter-section label{
+.filter-section label {
   display: block;
-
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 700;
-
+  color: #222;
   margin-bottom: 12px;
 }
 
-/* LOCATION */
-
-.location-box{
+.location-box {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  border-bottom: 1px solid #ddd;
-
+  border-bottom: 1.5px solid #eee;
   padding-bottom: 12px;
 }
 
-.location-input{
+.location-input {
   border: none;
   outline: none;
-
   width: 100%;
-
-  font-size: 18px;
-
-  color: #777;
+  font-size: 15px;
+  color: #555;
+  background: transparent;
 }
 
-/* AGE */
-
-.age-header{
+.age-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
-.slider{
-  width: 100%;
-  accent-color: #e86b56;
-}
+.age-header p { font-weight: 600; color: #ff4d4d; font-size: 15px; }
 
-/* TAGS */
+.slider { width: 100%; accent-color: #ff4d4d; }
 
-.interest-tags{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.interest-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.tag{
-  padding: 10px 18px;
-
+.tag {
+  padding: 8px 16px;
   border-radius: 30px;
-
-  border: 1px solid #e86b56;
-
+  border: 1.5px solid #eee;
   background: white;
-
   color: #666;
-
   cursor: pointer;
-
-  font-size: 15px;
-
-  transition: 0.3s;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
-.tag.active{
-  background: linear-gradient(
-    135deg,
-    #e86b56,
-    #f09b5f
-  );
+.tag:hover { border-color: #ff4d4d; color: #ff4d4d; }
 
+.tag.active {
+  background: linear-gradient(135deg, #ff4d4d, #ff7a45);
   color: white;
+  border-color: transparent;
 }
 
-/* BUTTON */
-
-.save-filter-btn{
+.save-filter-btn {
   width: 100%;
-  height: 60px;
-
+  height: 52px;
   border: none;
-
-  border-radius: 40px;
-
-  background: linear-gradient(
-    135deg,
-    #e6493d,
-    #ee9b5c
-  );
-
-  color: white;
-
-  font-size: 20px;
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-/* EMPTY */
-
-.empty-state{
-  text-align: center;
-  margin-top: 80px;
-}
-
-.empty-state h2{
-  font-size: 42px;
-  margin-bottom: 10px;
-}
-
-.empty-state p{
-  font-size: 18px;
-  color: #777;
-}
-
-/* SORT */
-
-.sort-tabs{
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-
-  margin-bottom: 35px;
-}
-
-.tab-btn{
-  border: none;
-
-  padding: 12px 24px;
-
   border-radius: 30px;
-
-  background: #ececec;
-
-  cursor: pointer;
-
+  background: linear-gradient(135deg, #ff4d4d, #ff7a45);
+  color: white;
   font-size: 16px;
-  font-weight: 600;
-}
-
-.tab-btn.active{
-  background: linear-gradient(
-    135deg,
-    #e86b56,
-    #f09b5f
-  );
-
-  color: white;
-}
-
-/* PROFILES */
-
-.profiles-grid{
-  display: grid;
-
-  grid-template-columns:
-    repeat(auto-fit, minmax(300px, 1fr));
-
-  gap: 25px;
-}
-
-.profile-card{
-  position: relative;
-
-  height: 430px;
-
-  overflow: hidden;
-
-  border-radius: 20px;
-
-  background: white;
-
-  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-
-  transition: 0.3s;
-}
-
-.profile-card:hover{
-  transform: translateY(-5px);
-}
-
-.profile-img{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* MATCH */
-
-.match-tag{
-  position: absolute;
-
-  top: 15px;
-  left: 15px;
-
-  z-index: 5;
-
-  background: linear-gradient(
-    135deg,
-    #e86b56,
-    #f09b5f
-  );
-
-  color: white;
-
-  padding: 8px 14px;
-
-  border-radius: 10px;
-
-  font-size: 14px;
   font-weight: 700;
-}
-
-/* OVERLAY */
-
-.profile-overlay{
-  position: absolute;
-
-  bottom: 0;
-  left: 0;
-
-  width: 100%;
-
-  padding: 25px 20px;
-
-  background: linear-gradient(
-    to top,
-    rgba(0,0,0,0.75),
-    rgba(0,0,0,0)
-  );
-
-  color: white;
-}
-
-.profile-overlay h3{
-  font-size: 34px;
-  margin-bottom: 5px;
-}
-
-.location-text{
-  font-size: 16px;
-}
-
-/* SAVE */
-
-.save-btn{
-  position: absolute;
-
-  top: 15px;
-  right: 15px;
-
-  border: none;
-
-  background: rgba(255,255,255,0.9);
-
-  padding: 10px 14px;
-
-  border-radius: 10px;
-
   cursor: pointer;
-
-  font-weight: 600;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 4px 14px rgba(255,77,77,0.3);
 }
 
-/* MOBILE */
+.save-filter-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-@media (max-width: 768px){
+.empty-state { text-align: center; margin-top: 80px; }
+.empty-state h2 { font-size: 36px; font-weight: 800; color: #222; margin-bottom: 10px; }
+.empty-state p { font-size: 16px; color: #aaa; }
 
-  .search-header h1{
-    font-size: 36px;
-  }
+.sort-tabs { display: flex; justify-content: center; gap: 12px; margin-bottom: 35px; }
 
-  .filter-overlay{
-    right: 0;
-    left: 0;
+.tab-btn {
+  border: none;
+  padding: 10px 24px;
+  border-radius: 30px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  transition: all 0.2s;
+}
 
-    display: flex;
-    justify-content: center;
-  }
+.tab-btn:hover { background: #ffe0e6; color: #ff4d4d; }
 
-  .filter-modal{
-    width: 92%;
-  }
+.tab-btn.active {
+  background: linear-gradient(135deg, #ff4d4d, #ff7a45);
+  color: white;
+  box-shadow: 0 4px 14px rgba(255,77,77,0.3);
+}
 
-  .profiles-grid{
-    grid-template-columns: 1fr;
-  }
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .search-header h2 { font-size: 28px; }
+  .filter-overlay { right: 0; left: 0; display: flex; justify-content: center; }
+  .filter-modal { width: 92%; }
+  .profiles-grid { grid-template-columns: 1fr; }
 }
 
 </style>

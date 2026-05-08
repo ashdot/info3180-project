@@ -101,10 +101,7 @@ class User(db.Model):
         return False
 
     def get_id(self):
-        try:
-            return unicode(self.user_id)  # python 2 support
-        except NameError:
-            return str(self.id)  # python 3 support
+        return str(self.user_id)  # python 3 support
         
     def update_dob(self, new_dob):
         """
@@ -181,36 +178,34 @@ class Profile(db.Model):
         return None
 
     def update_profile(self, visibility=None, interests=None, education=None, 
-                       photo_url=None, bio=None, location=None, looking_for=None):
-        """Updates profile fields and associated user fields."""
-        allowed_options = ['Public', 'Private']
+                   photo_url=None, bio=None, location=None, looking_for=None):
     
+        allowed_options = ['Public', 'Private']
+
         if visibility is not None:
             if visibility in allowed_options:
                 self.visibility = visibility
             else:
                 raise ValueError(f"Invalid visibility. Choose from {allowed_options}")
-            
-        # Update User-level data through the setter
+
         if looking_for is not None:
             self.looking_for = looking_for
 
-        if interests:
+        if interests is not None:
             self.interests = interests
 
-        # Update Profile-level data
-        if education:
+        if education is not None:
             self.education = education 
-        if photo_url:
-            self.photo_url = photo_url
-        if bio:
-            self.bio = bio
-        if location:
-            self.location = location
-            
-        db.session.commit()
-        return self
 
+        if bio is not None:
+            self.bio = bio
+
+        if location is not None:
+            self.location = location
+
+        # REMOVED db.session.commit() from here
+        return self
+    
     def __repr__(self):
         return f'<Profile {self.profile_id} for User {self.user_id}>'
     

@@ -8,61 +8,71 @@
             <div class="heading">
                 <h2>Saved Profiles</h2>
             </div>
+ 
+            <div v-if="loading" class="state-msg">Loading...</div>
+ 
+            <div v-else-if="savedProfiles.length === 0" class="empty-state">
+                <p>No saved profiles yet. Save profiles you like while browsing!</p>
+            </div>
   
-  
-            <div class="favourites-grid">
-                <!--edit this
-                <div
-                    v-for="match in filteredMatches"
-                    :key="match.id"
-                    class="match-card"
+            <div v-else class="favourites-grid">
+                <ProfileCard
+                    v-for="profile in savedProfiles"
+                    :key="profile.user_id"
+                    :profile="profile"
                 >
-        
-                    <img
-                        :src="match.photo"
-                        class="match-img"
-                    />
-
-                    <div class="overlay">
-
-                        <div class="match-percent">
-                            {{ Math.round(match.score * 20) }}% Match
-                        </div>
-
-                        <div class="match-info">
-                            <h2>
-                                {{ match.first_name }}
-                            </h2>
-                            
-                            <div class="location-row">
-
-                            </div>
-                        </div>
-                    </div>
-                </div>  --> 
+                    <template #actions>
+                        <button class="slot-btn view" @click="viewProfile(profile.user_id)">View</button>
+                        <button class="slot-btn unsave" @click="unsaveProfile(profile.user_id)">Unsave</button>
+                    </template>
+                </ProfileCard>
             </div>
         </main>
     </div>
 </template>
   
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-  
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Sidebar from '@/components/Sidebar.vue'
-
+import ProfileCard from '@/components/ProfileCard.vue'
+ 
+const router = useRouter()
+const savedProfiles = ref([])
+const loading = ref(true)
+ 
+onMounted(async () => {
+    try {
+        const response = await api.get('/profiles/saved')
+        savedProfiles.value = response.data.saved_profiles || []
+    } catch (error) {
+        console.error(error)
+    } finally {
+        loading.value = false
+    }
+})
+ 
+const viewProfile = (user_id) => {
+    router.push(`/profile/${user_id}`)
+}
+ 
+const unsaveProfile = async (user_id) => {
+    try {
+        await api.post(`/profiles/${user_id}/save`)
+        savedProfiles.value = savedProfiles.value.filter(p => p.user_id !== user_id)
+    } catch (error) {
+        console.error(error)
+    }
+}
 </script>
   
 <style scoped>
- 
+
 .layout {
     display: flex;
     min-height: 100vh;
-}
-
-.sidebar {
-    width: 260px;
-    flex-shrink: 0;
+    background: #f5f5f7;
 }
 
 .page-content {
@@ -76,92 +86,48 @@ import Sidebar from '@/components/Sidebar.vue'
     display: flex;
     justify-content: center;
     margin-top: 20px;
-    margin-bottom: 10px;
+    margin-bottom: 30px;
 }
-  
+
+.heading h2 {
+    font-size: 36px;
+    font-weight: 800;
+    color: #111;
+}
+
+.state-msg {
+    text-align: center;
+    margin-top: 80px;
+    color: #aaa;
+    font-size: 16px;
+}
+
+.empty-state {
+    text-align: center;
+    margin-top: 80px;
+    color: #aaa;
+    font-size: 16px;
+}
+
 .favourites-grid {
     display: grid;
-  
-    grid-template-columns:
-      repeat(auto-fill, minmax(260px, 1fr));
-  
-    gap: 28px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
 }
- 
-/*
-.match-card {
-    position: relative;
-  
-    height: 380px;
-  
-    border-radius: 18px;
-    overflow: hidden;
-  
-    cursor: pointer;
+
+:deep(.slot-btn) {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-  
-.match-img {
-    width: 100%;
-    height: 100%;
-  
-    object-fit: cover;
-}
-  
-.overlay {
-    position: absolute;
-    inset: 0;
-  
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-  
-    padding: 18px;
-  
-    background: linear-gradient(
-      to top,
-      rgba(0,0,0,0.72),
-      transparent 60%
-    );
-}
-  
-.match-percent {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-  
-    background: linear-gradient(
-      to right,
-      #ff4d4d,
-      #ff7a45
-    );
-  
-    color: white;
-  
-    padding: 8px 12px;
-    border-radius: 10px;
-  
-    font-weight: 700;
-}
-  
-.match-info h2 {
-    color: white;
-    font-size: 32px;
-    margin-bottom: 6px;
-}
- 
-/*
-.location-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-  
-.location-row p {
-    color: white;
-}
-  
-.location-icon {
-    width: 14px;
-    height: 14px;
-}*/
+
+:deep(.slot-btn.view) { background: #f8f8f8; color: #555; }
+:deep(.slot-btn.view:hover) { background: #ffe0e6; color: #ff4d4d; }
+:deep(.slot-btn.unsave) { background: linear-gradient(135deg, #ff4d4d, #ff7a45); color: white; }
+:deep(.slot-btn.unsave:hover) { opacity: 0.9; }
 </style>

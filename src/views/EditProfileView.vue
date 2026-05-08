@@ -149,8 +149,8 @@
 </template>
 
 <script>
-
 import Sidebar from '@/components/Sidebar.vue'
+import api from '@/services/api'
 
 export default {
   components: {
@@ -159,23 +159,14 @@ export default {
 
   data() {
     return {
-
       visibility: "Public",
-
       preference: "Both",
-
       education: "",
-
       interests: [],
-
       bio: "",
-
       location: "",
-
       preview: null,
-
       availableInterests: [
-
         'Tech',
         'Music',
         'Art',
@@ -209,28 +200,34 @@ export default {
       }
     },
 
-    saveProfile() {
+    async saveProfile() {
+      const formData = new FormData();
 
-      const profileData = {
+      formData.append('visibility', this.visibility);
+      formData.append('education', this.education);
+      formData.append('bio', this.bio);
+      formData.append('location', this.location);
+      formData.append('interests', JSON.stringify(this.interests));
 
-        visibility: this.visibility,
+      // Attach photo if one was selected
+      const fileInput = this.$refs.fileInput.files[0];
+      if (fileInput) {
+        formData.append('photo', fileInput);
+      }
 
-        preference: this.preference,
+      try {
+        await api.put('/profile/edit', formData,{
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      
+        this.$router.push('/profile')
 
-        education: this.education,
-
-        interests: this.interests,
-
-        bio: this.bio,
-
-        location: this.location,
-
-        profilePhoto: this.preview
-      };
-
-      console.log(profileData);
-
-      alert("Profile Updated!");
+      } catch (err) {
+        console.error(err);
+        alert("Network error");
+      }
     }
   }
 };

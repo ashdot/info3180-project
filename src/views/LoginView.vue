@@ -158,6 +158,11 @@ const handleLogin = async () => {
       user.username
     )
 
+    localStorage.setItem(
+      'isLoggedIn',
+      'true'
+    )
+
     // OPTIONAL TOKEN SUPPORT
     // Only if backend later returns token
     if (response.data.token) {
@@ -176,7 +181,7 @@ const handleLogin = async () => {
     }
 
     // REDIRECT
-    router.push('/search')
+    router.push('/discover')
 
   } catch (error) {
 

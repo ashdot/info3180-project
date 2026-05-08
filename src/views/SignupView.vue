@@ -210,6 +210,7 @@
 </template>
 
 <script>
+import api from '@/services/api'
 export default {
 
   data() {
@@ -238,51 +239,53 @@ export default {
 
   methods: {
 
-    handleSignup() {
-
+    async handleSignup() {
       if (
-        !this.first_name ||
-        !this.last_name ||
-        !this.username ||
-        !this.email ||
-        !this.dob ||
-        !this.password
+        !this.first_name || !this.last_name || !this.username ||
+        !this.email || !this.dob || !this.password
       ) {
-        alert("Please fill in all required fields");
-        return;
+        alert("Please fill in all required fields")
+        return
       }
 
       if (this.password !== this.confirmPassword) {
-        alert("Passwords do not match");
-        return;
+        alert("Passwords do not match")
+        return
       }
 
       if (!this.agree) {
-        alert("Please agree to the Terms and Conditions");
-        return;
+        alert("Please agree to the Terms and Conditions")
+        return
       }
 
       const signupData = {
-
         email: this.email,
         username: this.username,
-
         first_name: this.first_name,
         last_name: this.last_name,
-
         dob: this.dob,
-
         gender: this.gender,
         looking_for: this.looking_for,
-
         password: this.password
-      };
+      }
 
-      console.log(signupData);
+      try {
+        await api.post('/signup', signupData)
 
-      alert("Account Created!");
+        alert("Account Created!")
+        this.$router.push({ name: 'discover' })
 
-      this.$router.push({ name: 'search' });
+      } catch (error) {
+        console.error(error)
+
+        if (error.response?.data?.error) {
+          alert(error.response.data.error)
+        } else if (error.response?.data?.errors) {
+          alert(JSON.stringify(error.response.data.errors))
+        } else {
+          alert("Something went wrong. Please try again.")
+        }
+      }
     }
   }
 };

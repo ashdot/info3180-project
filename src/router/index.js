@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import Profile from '../views/Profile.vue'
 const HomeView = () => import('../views/HomeView.vue')
-//const AboutView = () => import('../views/AboutView.vue') i dont think we hv this
 const LoginView = () => import('../views/LoginView.vue')
 const SignupView = () => import('../views/SignupView.vue')
+import DiscoverView from '../views/DiscoverView.vue'
 const EditProfileView = () => import('../views/EditProfileView.vue') //maybe rename to just ProfileView
 const SearchView = () => import('../views/SearchView.vue')
 const MatchesView = () => import('../views/MatchesView.vue')
@@ -19,17 +19,22 @@ const router = createRouter({
       name: 'home',
       component: HomeView
     },
-
-    /*{
-      path: '/about',
-      name: 'about',
-      component: AboutView
-    },*/
-
     {
       path: '/login',
       name: 'login',
       component: LoginView
+    },
+
+    {
+      path: '/discover',
+      name: 'discover',
+      component: DiscoverView
+    },
+
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile
     },
 
     {
@@ -66,13 +71,15 @@ const router = createRouter({
       path: '/edit-profile',
       name: 'edit-profile',
       component: EditProfileView
-    }
-
-    /*
+    },
     {
-      path: '/:pathMatch(.*)*',
-      redirect: '/login'
-    }*/
+      path: '/profile/:user_id', 
+      component: () => import('@/views/Profile.vue') 
+    },
+    {
+      path: '/messages/:match_id?', 
+      component: () => import('@/views/MessagesView.vue') 
+    }
 
   ]
 })
