@@ -8,8 +8,8 @@ Members | Roles
 --- | ---
 Rochele Webster | Backend Lead
 Jada-Marie Dotting | Frontend Lead
-Amoye Walters | QA/Testing Lead
-Ashle Johnson | Deployment Lead
+Amoye Walters | Deployment Lead 
+Ashle Johnson | QA/Testing Lead
 Alexia Barrows | Project Manager
 
 
