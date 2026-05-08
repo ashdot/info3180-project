@@ -111,7 +111,7 @@ Endpoint | Method | Description | Auth Required | Response |
 --- | --- | --- | --- | ---
 /api/v1/signup | POST | Register a new user and auto-create profile | No | 201 Created
 /api/v1/auth/login | POST | Login and create session | No | 200 + user data
-/api/v1/auth/logout | POST | Logout and clear session | Yes | 200 OK
+/api/v1/auth/logout | GET | Logout and clear session | Yes | 200 OK
 /api/v1/profile/all | GET | List all public profiles | Yes | 200 + profiles[]
 /api/v1/profile/<user_id> | GET | Get a specific user's profile | Yes | 200 + profile
 /api/v1/profile | GET | Display current user's own profile | Yes | 200 + profile
@@ -139,3 +139,4 @@ Endpoint | Method | Description | Auth Required | Response |
 
 
 ## Known Issues and Limitations 
+
