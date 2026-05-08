@@ -2,7 +2,6 @@
   <div class="page">
     <div class="card">
       
-      <!--<div class="logo-circle">❤</div>-->
       <div class="logo">
         <img src="@/assets/logo.png" alt="DriftDater Logo" />
       </div>
@@ -10,6 +9,15 @@
       <h1>Welcome Back</h1>
       <p class="subtitle">Sign in to continue your journey</p>
 
+      <!-- ERROR -->
+      <div
+        v-if="errorMessage"
+        class="error-box"
+      >
+        {{ errorMessage }}
+      </div>
+
+      <!-- LOGIN FORM -->
       <form @submit.prevent="handleLogin">
 
         <label>Email Address</label>
@@ -18,6 +26,7 @@
             type="email" 
             placeholder="you@example.com" 
             v-model="email" 
+            required
           />
         </div>
 
@@ -27,6 +36,7 @@
             :type="showPassword ? 'text' : 'password'" 
             placeholder="Enter your password" 
             v-model="password" 
+            required
           />
 
           <button type="button" class="toggle" @click="showPassword = !showPassword">
@@ -40,10 +50,26 @@
             Remember me
           </label>
 
+          <!--probably remove this-->
           <a href="#" class="forgot">Forgot password?</a>
         </div>
 
-        <button class="btn">Sign In</button>
+        <!--<button class="btn">Login</button>-->
+        <!-- SUBMIT -->
+        <button
+          class="btn"
+          :disabled="loading"
+        >
+
+          <span v-if="loading">
+            Logging in...
+          </span>
+
+          <span v-else>
+            Login
+          </span>
+
+        </button>
       </form>
 
       <p class="bottom">
@@ -55,8 +81,9 @@
   </div>
 </template>
 
-<script>
-export default {
+<script setup>
+
+/*export default {
   data() {
     return {
       email: "",
@@ -70,10 +97,119 @@ export default {
       console.log(this.email, this.password);
     }
   }
-};
+};*/
+
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import api from '@/services/api'
+
+const router = useRouter()
+
+// FORM DATA
+const email = ref('')
+const password = ref('')
+
+const remember = ref(false)
+const showPassword = ref(false)
+
+// UI STATES
+const loading = ref(false)
+const errorMessage = ref('')
+
+// LOGIN
+const handleLogin = async () => {
+
+  errorMessage.value = ''
+
+  // VALIDATION
+  if (!email.value || !password.value) {
+
+    errorMessage.value =
+      'Please enter your email and password.'
+
+    return
+  }
+
+  loading.value = true
+
+  try {
+
+    // BACKEND REQUEST
+    const response = await api.post(
+      '/auth/login',
+      {
+        email: email.value,
+        password: password.value
+      }
+    )
+
+    // USER DATA
+    const user = response.data.user
+
+    // STORE SESSION DATA
+    localStorage.setItem(
+      'user_id',
+      user.user_id
+    )
+
+    localStorage.setItem(
+      'username',
+      user.username
+    )
+
+    localStorage.setItem(
+      'isLoggedIn',
+      'true'
+    )
+
+    // OPTIONAL TOKEN SUPPORT
+    // Only if backend later returns token
+    if (response.data.token) {
+
+      localStorage.setItem(
+        'token',
+        response.data.token
+      )
+    } else {
+
+      // Temporary fallback
+      localStorage.setItem(
+        'token',
+        'logged_in'
+      )
+    }
+
+    // REDIRECT
+    router.push('/discover')
+
+  } catch (error) {
+
+    console.error(error)
+
+    // BACKEND ERROR MESSAGE
+    if (error.response?.data?.error) {
+
+      errorMessage.value =
+        error.response.data.error
+
+    } else {
+
+      errorMessage.value =
+        'Something went wrong. Please try again.'
+    }
+
+  } finally {
+
+    loading.value = false
+
+  }
+}
+
 </script>
 
 <style scoped>
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -91,21 +227,6 @@ export default {
   text-align: center;
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
-
-/*
-.logo-circle {
-  width: 70px;
-  height: 70px;
-  margin: auto;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff4d79, #ff6a5c);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 28px;
-}
-*/
 
 .logo img {
   width: 70px;

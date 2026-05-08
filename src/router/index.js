@@ -1,11 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import Profile from '../views/Profile.vue'
 const HomeView = () => import('../views/HomeView.vue')
-const AboutView = () => import('../views/AboutView.vue')
 const LoginView = () => import('../views/LoginView.vue')
 const SignupView = () => import('../views/SignupView.vue')
-const EditProfileView = () => import('../views/EditProfileView.vue')
+import DiscoverView from '../views/DiscoverView.vue'
+const EditProfileView = () => import('../views/EditProfileView.vue') //maybe rename to just ProfileView
 const SearchView = () => import('../views/SearchView.vue')
+const MatchesView = () => import('../views/MatchesView.vue')
+const MessagesView = () => import('../views/MessagesView.vue')
+const FavouritesView = () => import('../views/FavouritesView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,25 +16,25 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/login'
-    },
-
-    {
-      path: '/home',
       name: 'home',
       component: HomeView
     },
-
-    {
-      path: '/about',
-      name: 'about',
-      component: AboutView
-    },
-
     {
       path: '/login',
       name: 'login',
       component: LoginView
+    },
+
+    {
+      path: '/discover',
+      name: 'discover',
+      component: DiscoverView
+    },
+
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile
     },
 
     {
@@ -41,21 +44,43 @@ const router = createRouter({
     },
 
     {
-      path: '/edit-profile',
-      name: 'edit-profile',
-      component: EditProfileView
-    },
-
-    {
       path: '/search',
       name: 'search',
       component: SearchView
     },
 
     {
-      path: '/:pathMatch(.*)*',
-      redirect: '/login'
+      path: '/favourites',
+      name: 'favourites',
+      component: FavouritesView
+    },
+
+    {
+      path: '/matches',
+      name: 'matches',
+      component: MatchesView
+    },
+
+    {
+      path: '/messages',
+      name: 'messages',
+      component: MessagesView
+    },
+
+    {
+      path: '/edit-profile',
+      name: 'edit-profile',
+      component: EditProfileView
+    },
+    {
+      path: '/profile/:user_id', 
+      component: () => import('@/views/Profile.vue') 
+    },
+    {
+      path: '/messages/:match_id?', 
+      component: () => import('@/views/MessagesView.vue') 
     }
+
   ]
 })
 

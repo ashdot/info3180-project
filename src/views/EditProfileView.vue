@@ -1,9 +1,11 @@
 <template>
   <div class="page">
 
+    <Sidebar />
+  
     <div class="card">
 
-      <h1>Edit Profile</h1>
+      <h2>Edit Profile</h2>
 
       <p class="subtitle">
         Update your profile details
@@ -147,27 +149,24 @@
 </template>
 
 <script>
+import Sidebar from '@/components/Sidebar.vue'
+import api from '@/services/api'
+
 export default {
+  components: {
+    Sidebar
+  },
 
   data() {
     return {
-
       visibility: "Public",
-
       preference: "Both",
-
       education: "",
-
       interests: [],
-
       bio: "",
-
       location: "",
-
       preview: null,
-
       availableInterests: [
-
         'Tech',
         'Music',
         'Art',
@@ -201,28 +200,34 @@ export default {
       }
     },
 
-    saveProfile() {
+    async saveProfile() {
+      const formData = new FormData();
 
-      const profileData = {
+      formData.append('visibility', this.visibility);
+      formData.append('education', this.education);
+      formData.append('bio', this.bio);
+      formData.append('location', this.location);
+      formData.append('interests', JSON.stringify(this.interests));
 
-        visibility: this.visibility,
+      // Attach photo if one was selected
+      const fileInput = this.$refs.fileInput.files[0];
+      if (fileInput) {
+        formData.append('photo', fileInput);
+      }
 
-        preference: this.preference,
+      try {
+        await api.put('/profile/edit', formData,{
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      
+        this.$router.push('/profile')
 
-        education: this.education,
-
-        interests: this.interests,
-
-        bio: this.bio,
-
-        location: this.location,
-
-        profilePhoto: this.preview
-      };
-
-      console.log(profileData);
-
-      alert("Profile Updated!");
+      } catch (err) {
+        console.error(err);
+        alert("Network error");
+      }
     }
   }
 };
@@ -246,6 +251,9 @@ export default {
   width: 100%;
   max-width: 650px;
 
+  position: relative;
+  z-index: 1;
+
   background: white;
 
   padding: 35px;
@@ -255,7 +263,7 @@ export default {
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
-h1 {
+h2 {
   text-align: center;
   margin-bottom: 10px;
 }
