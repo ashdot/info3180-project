@@ -140,9 +140,10 @@ Endpoint | Method | Description | Auth Required | Response |
 
 ## Known Issues and Limitations 
 1. Issues with deploying to Render
-2. implementions Sessions
+2. Implementions of Sessions
 3. Notifcations aren't cleared properly
 4. No location proximity in matching
 5. No forgotten password functionity
-6. Profile vicibility may not be functional
+6. Profile visibility may not be functional
+7. Frontend Design in User Manual may not completely match design in Manual 
 
